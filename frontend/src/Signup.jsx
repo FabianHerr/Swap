@@ -2,15 +2,25 @@ import { Link } from 'react-router-dom';
 import React from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
 const Signup = () => {
   const [name, setName] = React.useState('');
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
+  const navigate = useNavigate();
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    axios.post('', {name, email, password})
-    .then (result => console.log(result))
+    axios.post('http://localhost:3001/register', {name, email, password})
+    .then (result => {console.log(result)
+      console.log('Response data:', result.data);
+      if (result.data.success) {
+        navigate('/login'); // Redirect to login page on successful registration
+      } else {
+        alert(result.data.message); // Show error message
+      }
+    })
     .catch(err => console.error(err));
 
   }
