@@ -55,7 +55,7 @@ function Login() {
                     </form>
                     <div className="text-center">
                         <p className="mb-0">Don't have an account?</p>
-                        <Link to='/signup' className="btn btn-link">Sign Up</Link>
+                        <Link to='/register' className="btn btn-link">Sign Up</Link>
                     </div>
                 </div>
             </div>
