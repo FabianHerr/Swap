@@ -16,6 +16,33 @@ mongoose.connect(process.env.MONGO_URI, { dbName: "swap" })
   .then(() => console.log('MongoDB Connected Successfully'))
   .catch(err => console.error('MongoDB Connection Error:', err));
 
+app.post("/login", (req,res) => {
+    const { email, password } = req.body;
+    UserModel.findOne({ email, password })
+    .then(user =>{
+        if(user){
+            if(user.password === password) {
+                res.json({
+                    success: true,
+                    message: "Login successful",
+                    user: user
+                });
+            } else {
+                res.status(401).json({
+                    success: false,
+                    message: "Invalid email or password"
+                });
+            }
+        }
+        else {
+            res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+    })
+})
+
 app.post("/register", (req, res) => {
   UserModel.create(req.body)
     .then(user => {
