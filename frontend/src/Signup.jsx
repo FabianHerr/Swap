@@ -8,13 +8,19 @@ const Signup = () => {
   const [name, setName] = React.useState('');
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
+  const [confirmPassword, setConfirmPassword] = React.useState('');
+  const [error, setError] = React.useState('');
   const navigate = useNavigate();
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if(password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+    setError('');
     axios.post('http://localhost:3001/register', {name, email, password})
     .then (result => {console.log(result)
-      console.log('Response data:', result.data);
       if (result.data.success) {
         navigate('/login'); // Redirect to login page on successful registration
       } else {
@@ -72,7 +78,9 @@ const Signup = () => {
                 id="confirmPassword"
                 name="confirmPassword"
                 placeholder="Confirm your password"
+                onChange={(e) => setConfirmPassword(e.target.value)}
               />
+              {error && <small className="text-danger">{error}</small>}
             </div>
             <button type="submit" className="btn btn-primary w-100 mb-3">Sign Up</button>
           </form>

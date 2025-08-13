@@ -6,6 +6,7 @@ import axios from 'axios';
 function Login() {
     const [email, setEmail] = React.useState('');
     const [password, setPassword] = React.useState('');
+    const [error, setError] = React.useState('');
     const navigate = useNavigate();
 
     const handleSubmit = (e) => {
@@ -17,7 +18,7 @@ function Login() {
                 if (result.data.success) {
                     navigate('/'); // Redirect to home page on successful login
                 } else {
-                    alert(result.data.message); // Show error message
+                    setError(result.data.message); // Show error message
                 }
             })
             .catch(err => console.error(err));
@@ -51,6 +52,7 @@ function Login() {
                                 onChange={(e) => setPassword(e.target.value)}
                             />
                         </div>
+                        {error && <div className="text-danger mb-3">{error}</div>}
                         <button type="submit" className="btn btn-primary w-100 mb-3">Login</button>
                     </form>
                     <div className="text-center">
