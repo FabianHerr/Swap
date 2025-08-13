@@ -2,15 +2,31 @@ import { Link } from 'react-router-dom';
 import React from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
 const Signup = () => {
   const [name, setName] = React.useState('');
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
+  const [confirmPassword, setConfirmPassword] = React.useState('');
+  const [error, setError] = React.useState('');
+  const navigate = useNavigate();
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    axios.post('', {name, email, password})
-    .then (result => console.log(result))
+    if(password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+    setError('');
+    axios.post('http://localhost:3001/register', {name, email, password})
+    .then (result => {console.log(result)
+      if (result.data.success) {
+        navigate('/login'); // Redirect to login page on successful registration
+      } else {
+        alert(result.data.message); // Show error message
+      }
+    })
     .catch(err => console.error(err));
 
   }
@@ -62,7 +78,9 @@ const Signup = () => {
                 id="confirmPassword"
                 name="confirmPassword"
                 placeholder="Confirm your password"
+                onChange={(e) => setConfirmPassword(e.target.value)}
               />
+              {error && <small className="text-danger">{error}</small>}
             </div>
             <button type="submit" className="btn btn-primary w-100 mb-3">Sign Up</button>
           </form>
