@@ -18,34 +18,33 @@ mongoose.connect(process.env.MONGO_URI, { dbName: "swap" })
   .then(() => console.log('MongoDB Connected Successfully'))
   .catch(err => console.error('MongoDB Connection Error:', err));
 
-app.post("/login", (req,res) => {
+app.post("/login", async (req,res) => {
+
     const { email, password } = req.body;
-    UserModel.findOne({ email, password })
-    .then(user =>{
-        if(user){
-            if(user.password === password) { 
-                res.json({
-                    success: true,
-                    message: "Login successful",
-                    user: user
-                });
-            } else {
-                res.status(401).json({
-                    success: false,
-                    message: "Invalid email or password"
-                });
-            }
-        }
-        else {
-            res.status(404).json({
-                success: false,
-                message: "User not found"
-            });
-        }
-    })
-    .catch(err => {
-      res.status(500).json({ success: false, message: "Server error" });
-    });
+
+    const user =  await UserModel.findOne({email});
+      if (!user) {
+        return res.status(404).json({ success: false, message: "User not found" });
+      }
+      
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (!isMatch) {
+        return res.status(401).json({ success: false, message: "Login failed" });
+      }
+
+      // Generate JWT token
+      const token = jwt.sign(
+        { userId: user._id, email: user.email },
+        process.env.JWT_SECRET,
+        { expiresIn: '1h' } // Token expires in 1 hour
+      );
+
+      res.json({
+        success: true,
+        message: "Login successful",
+        token, // Send the token to the client
+        user
+      });
 })
 
 app.post("/register", async (req, res) => {
