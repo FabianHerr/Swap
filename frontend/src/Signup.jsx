@@ -20,14 +20,17 @@ const Signup = () => {
     }
     setError('');
     axios.post('http://localhost:3001/register', {name, email, password})
-    .then (result => {console.log(result)
-      if (result.data.success) {
-        navigate('/login'); // Redirect to login page on successful registration
-      } else {
-        alert(result.data.message); // Show error message
-      }
-    })
-    .catch(err => console.error(err));
+      .then(result => {
+        if (result.data.success) {
+          navigate('/login'); // success
+        } else {
+          setError(result.data.message); // backend error
+        }
+      })
+      .catch(err => {
+        console.error(err); // log to console
+        setError(err.response?.data?.message || "Registration failed"); // show in UI
+      });
 
   }
 

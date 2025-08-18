@@ -3,6 +3,8 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const UserModel = require('./models/User'); // Adjust the path as necessary
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 
 const app = express();
 app.use(express.json());
@@ -21,7 +23,7 @@ app.post("/login", (req,res) => {
     UserModel.findOne({ email, password })
     .then(user =>{
         if(user){
-            if(user.password === password) {
+            if(user.password === password) { 
                 res.json({
                     success: true,
                     message: "Login successful",
@@ -41,23 +43,40 @@ app.post("/login", (req,res) => {
             });
         }
     })
+    .catch(err => {
+      res.status(500).json({ success: false, message: "Server error" });
+    });
 })
 
-app.post("/register", (req, res) => {
-  UserModel.create(req.body)
-    .then(user => {
-      res.json({
-        success: true,
-        message: "User registered successfully",
-        user: user
-      });
-    })
-    .catch(err => {
-      res.status(400).json({
+app.post("/register", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Check if user already exists
+    const existingUser = await UserModel.findOne({ email });
+    if (existingUser) {
+      return res.status(409).json({
         success: false,
-        message: err.message || "Registration failed"
+        message: "User already exists"
       });
+    }
+
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create the new user
+    const user = await UserModel.create({email, password: hashedPassword});
+    res.json({
+      success: true,
+      message: "User registered successfully",
+      user
     });
+  } catch (err) {
+    res.status(400).json({
+      success: false,
+      message: err.message || "Registration failed"
+    });
+  }
 });
 
 const server = app.listen(3001, () => {
