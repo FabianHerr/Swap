@@ -19,7 +19,7 @@ const Signup = () => {
       return;
     }
     setError('');
-    axios.post('http://localhost:3001/register', {name, email, password})
+    axios.post('http://localhost:3001/auth/register', {name, email, password})
       .then(result => {
         if (result.data.success) {
           navigate('/login'); // success
