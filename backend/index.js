@@ -1,8 +1,10 @@
+//requirements
 require('dotenv').config();
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const UserModel = require('./models/User'); // Adjust the path as necessary
+const OfferModel = require('./models/Offer'); // Adjust the path as necessary
 
 const app = express();
 app.use(express.json());
@@ -56,6 +58,23 @@ app.post("/register", (req, res) => {
       res.status(400).json({
         success: false,
         message: err.message || "Registration failed"
+      });
+    });
+});
+
+app.post("/offer", (req, res) => {
+  OfferModel.create(req.body)
+    .then(offer => {
+      res.json({
+        success: true,
+        message: "Offer posted successfully",
+        offer: offer
+      });
+    })
+    .catch(err => {
+      res.status(400).json({
+        success: false,
+        message: err.message || "Failed to post offer"
       });
     });
 });
