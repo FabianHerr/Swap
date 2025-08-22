@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 function Login() {
+
     const [email, setEmail] = React.useState('');
     const [password, setPassword] = React.useState('');
     const [error, setError] = React.useState('');
@@ -11,7 +12,7 @@ function Login() {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        axios.post('http://localhost:3001/login', { email, password })
+        axios.post('http://localhost:3001/auth/login', { email, password })
             .then(result => {
                 console.log(result);
                 console.log('Response data:', result.data);
@@ -21,7 +22,13 @@ function Login() {
                     setError(result.data.message); // Show error message
                 }
             })
-            .catch(err => console.error(err));
+            .catch(err => {
+                if (err.response && err.response.data && err.response.data.message) {
+                    setError(err.response.data.message);
+                } else {
+                    setError("An unexpected error occurred");
+                }
+            });
     };
 
     return (
