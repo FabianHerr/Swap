@@ -2,11 +2,17 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const authRoutes = require("./routes/auth");
+const offerRoutes = require("./routes/offerRoutes");
 
 const app = express();
 app.use(express.json());
 app.use(cors());
 app.use("/auth", authRoutes);
+
+
+
+app.use("/offer", offerRoutes);
+
 
 // Add startup logging
 console.log('Starting server...');
