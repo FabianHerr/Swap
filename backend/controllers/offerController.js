@@ -1,6 +1,6 @@
 const OfferModel = require('../models/Offer');
 
-// ✅ Create a new offer
+// Create a new offer
 exports.createOffer = async (req, res) => {
   try {
     const { amount, currency, currencyToReceive } = req.body;

@@ -1,6 +1,6 @@
 require('dotenv').config();
 const UserModel = require('../models/User'); // Adjust the path as necessary
-const bcrypt = require("bcryptjs"); 
+const bcrypt = require("bcrypt"); 
 const jwt = require("jsonwebtoken");
 
 // Login user

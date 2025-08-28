@@ -4,6 +4,7 @@ import Signup from './Signup'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Login from './Login'
 import OfferPage from './OfferPage'
+import Messages from './Messages'
 
 
 function App() {
@@ -13,6 +14,7 @@ function App() {
         <Route path='/register' element={<Signup/>}></Route>
         <Route path='/login' element={<Login/>}></Route>
         <Route path='/offer' element={<OfferPage/>}></Route>
+        <Route path='/messages' element={<Messages/>}></Route>
       </Routes>
     </BrowserRouter>
   )
