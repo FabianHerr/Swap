@@ -1,91 +1,37 @@
-import React from "react";
-import "bootstrap/dist/css/bootstrap.min.css";
+import React from 'react';
+import Message from './Message';
+import Input from './Input';
+import { Badge } from 'react-bootstrap';
 
 const ChatWindow = () => {
   const messages = [
-    { id: 1, text: "Hey! Are you still selling USD?", sender: "them" },
-    { id: 2, text: "Yes! How much do you need?", sender: "me" },
-    { id: 3, text: "About 200, exchanging to CAD.", sender: "them" },
-    { id: 4, text: "Perfect, I can do that.", sender: "me" },
+    { id: 1, text: 'Hey! Are you still selling USD?', sender: 'them' },
+    { id: 2, text: 'Yes! How much do you need?', sender: 'me' },
+    { id: 3, text: 'About 200, exchanging to CAD.', sender: 'them' },
+    { id: 4, text: 'Perfect, I can do that.', sender: 'me' },
   ];
 
   return (
-    <div
-      className="d-flex flex-column flex-grow-1"
-      style={{ height: "100vh", backgroundColor: "#f9fafc" }}
-    >
-      {/* Header */}
-      <div className="d-flex align-items-center justify-content-between p-3 border-bottom bg-white">
+    <div className="d-flex flex-column flex-grow-1" style={{height:'100vh', backgroundColor:'#f8f9fa'}}>
+      <div className="d-flex align-items-center justify-content-between border-bottom sticky-top bg-white px-3" style={{height:'64px'}}>
         <div className="d-flex align-items-center">
-          <img
-            src="https://i.pravatar.cc/40?img=5"
-            alt="User avatar"
-            className="rounded-circle me-2"
-            width="40"
-            height="40"
-          />
-          <div>
-            <div className="fw-semibold">Alice</div>
-            <small className="text-success">● Online</small>
+          <div className="position-relative me-3" style={{width:'48px', height:'48px'}}>
+            <img src="https://i.pravatar.cc/48?img=5" alt="User avatar" className="rounded-circle w-100 h-100" />
+            <span className="position-absolute bottom-0 end-0" style={{width:'14px', height:'14px', backgroundColor:'#4BAAFE', borderRadius:'50%', border:'2px solid white'}}></span>
           </div>
+          <div className="fw-bold text-dark">Alice</div>
         </div>
         <div>
-          <span className="badge bg-primary me-1">USD</span>
-          <span className="badge bg-success">CAD</span>
+          <Badge bg="primary" className="me-2">USD</Badge>
+          <Badge bg="primary">CAD</Badge>
         </div>
       </div>
 
-      {/* Messages */}
-      <div className="flex-grow-1 overflow-auto p-3">
-        {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`d-flex mb-3 ${
-              msg.sender === "me" ? "justify-content-end" : "justify-content-start"
-            }`}
-          >
-            <div
-              className={`p-2 rounded-3 shadow-sm ${
-                msg.sender === "me"
-                  ? "bg-gradient text-white"
-                  : "bg-white text-dark"
-              }`}
-              style={{
-                maxWidth: "70%",
-                background:
-                  msg.sender === "me"
-                    ? "linear-gradient(90deg, #4BAAFE, #FC65B3)"
-                    : "white",
-              }}
-            >
-              {msg.text}
-            </div>
-          </div>
-        ))}
+      <div className="flex-grow-1 overflow-auto p-3 bg-white">
+        {messages.map(msg => <Message key={msg.id} message={msg} />)}
       </div>
 
-      {/* Input */}
-      <div className="p-3 border-top bg-white">
-        <div className="input-group">
-          <input
-            type="text"
-            className="form-control rounded-pill"
-            placeholder="Type a message..."
-          />
-          <button
-            className="btn ms-2"
-            style={{
-              background: "#FC65B3",
-              color: "white",
-              borderRadius: "50%",
-              width: "44px",
-              height: "44px",
-            }}
-          >
-            ➤
-          </button>
-        </div>
-      </div>
+      <Input />
     </div>
   );
 };
