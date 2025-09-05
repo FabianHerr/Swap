@@ -4,22 +4,20 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Login from './Login';
 import OfferPage from './OfferPage';
 import Messages from './Messages';
-import SideMenu from './SideMenu'; // import your SideMenu
+import TopMenu from './TopMenu'; // now a top bar
 
 function App() {
   return (
     <BrowserRouter>
-      <div className="d-flex">
-        {/* Sidebar: always visible */}
-        <SideMenu />
+      <div className="d-flex flex-column" style={{ minHeight: "100vh" }}>
+        {/* Top bar */}
+        <TopMenu />
 
-        {/* Main content area */}
+        {/* Main content area below the top bar */}
         <div
           className="flex-grow-1"
           style={{
-            marginLeft: "280px", // adjust if sidebar collapses
-            transition: "margin-left 0.3s ease",
-            padding: "20px",
+            padding: "0px",
           }}
         >
           <Routes>
