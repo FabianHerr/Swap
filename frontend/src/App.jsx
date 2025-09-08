@@ -3,7 +3,7 @@ import Signup from './Signup';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Login from './Login';
 import OfferPage from './OfferPage';
-import Messages from './Messages';
+import ChatPage from './ChatPage';
 import TopMenu from './TopMenu'; // now a top bar
 
 function App() {
@@ -27,7 +27,7 @@ function App() {
             <Route path="/register" element={<Signup />} />
             <Route path="/login" element={<Login />} />
             <Route path="/offer" element={<OfferPage />} />
-            <Route path="/messages" element={<Messages />} />
+            <Route path="/messages" element={<ChatPage />} />
           </Routes>
         </div>
       </div>

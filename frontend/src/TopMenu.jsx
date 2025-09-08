@@ -1,5 +1,5 @@
 import logo from "./assets/logo.svg";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FiSearch, FiPlusCircle, FiMessageCircle, FiUser } from "react-icons/fi";
 import { FaSearch, FaPlusCircle, FaCommentDots, FaUser } from "react-icons/fa";
 
@@ -14,9 +14,26 @@ const TopMenu = () => {
   ];
 
   const handleButtonClick = (id) => {
-    setActiveButton(id);
+    // Only navigate, don't setActiveButton here (will be set based on URL in useEffect)
+    if (id === "create") {
+      window.location.href = "/offer";
+    } else if (id === "messages") {
+      window.location.href = "/messages";
+    }
+    // No navigation for "browse" or "profile" in this logic
     console.log(`Navigating to: ${id}`);
   };
+
+  useEffect(() => {
+    const path = window.location.pathname;
+    if (path === "/offer") {
+      setActiveButton("create");
+    } else if (path === "/messages") {
+      setActiveButton("messages");
+    } else {
+      setActiveButton("swap");
+    }
+  }, []);
 
   return (
     <div
@@ -53,9 +70,9 @@ const TopMenu = () => {
               className={`btn d-flex align-items-center mx-2 ${isActive ? "shadow" : ""}`}
               style={{
                 justifyContent: "center",
-                padding: "113px 48px",
+                padding: "11px 48px",
                 borderRadius: "12px",
-                background: isHovered ? "#e0e0e0" : "transparent",
+                background: isHovered ? "#a0d8ff" : "transparent",
                 color: isActive ? "#fc65b3" : "#fff",
                 fontWeight: 700,
                 transition: "all 0.3s ease",
@@ -79,7 +96,7 @@ const TopMenu = () => {
           justifyContent: "center",
           padding: "14px 28px",
           borderRadius: "12px",
-          background: hoveredButton === "profile" ? "#e0e0e0" : "transparent",
+          background: hoveredButton === "profile" ? "#a0d8ff" : "transparent",
           color: activeButton === "profile" ? "#fc65b3" : "#fff",
           fontWeight: 700,
           transition: "all 0.3s ease",
