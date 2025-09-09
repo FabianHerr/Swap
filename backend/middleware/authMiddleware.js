@@ -19,3 +19,5 @@ function authMiddleware(req, res, next) {
         return res.status(403).json({ success: false, message: "Invalid token" });
     }
 }
+
+module.exports = authMiddleware;

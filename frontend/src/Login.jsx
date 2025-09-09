@@ -8,6 +8,7 @@ function Login() {
     const [email, setEmail] = React.useState('');
     const [password, setPassword] = React.useState('');
     const [error, setError] = React.useState('');
+    const [firebaseToken, setFirebaseToken] = React.useState('');
     const navigate = useNavigate();
 
     const handleSubmit = (e) => {
@@ -17,7 +18,21 @@ function Login() {
                 console.log(result);
                 console.log('Response data:', result.data);
                 if (result.data.success) {
-                    navigate('/'); // Redirect to home page on successful login
+                    const jwt = result.data.token;
+                    // post request to get firebase token
+                    axios.post('http://localhost:3001/chat/firebase-token', {}, {
+                        headers: {
+                            'Authorization': `Bearer ${jwt}`
+                        }
+                    })
+                    .then(res => {
+                        setFirebaseToken(res.data.firebaseToken); // Store Firebase token returned from server
+                        navigate('/'); // Redirect to home page on successful login
+                    })
+                    .catch(err => {
+                        console.error('Error fetching Firebase token:', err);
+                        setError("Failed to retrieve Firebase token");
+                    });
                 } else {
                     setError(result.data.message); // Show error message
                 }
