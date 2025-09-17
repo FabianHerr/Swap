@@ -2,7 +2,7 @@ const admin = require("firebase-admin");
 const fs = require("fs");
 const path = require("path");
 
-// Initialize Firebase Admin SDk is necessary since we are using admin features like authentication verification and database access
+// Initialize Firebase Admin SDk is necessary since we are using admin features like authentication verification
 function initFirebaseAdmin() {
     if (admin.apps.length) return admin; // Avoid re-initialization
     
