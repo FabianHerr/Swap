@@ -3,20 +3,20 @@ import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 
-// Your web app's Firebase configuration
+// Web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyCKBhI2f6W-u3UcOE1BdCvoAJoauboF1_U",
-  authDomain: "swap-chat-4d21c.firebaseapp.com",
-  projectId: "swap-chat-4d21c",
-  storageBucket: "swap-chat-4d21c.appspot.com", // 👈 small fix here (use .appspot.com)
-  messagingSenderId: "905071243934",
-  appId: "1:905071243934:web:1f8226170896658696c18f",
-  measurementId: "G-4E5MNVTGVH"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Export Firestore and Auth for use in your app
+// Export Firestore and Auth
 export const db = getFirestore(app);
 export const auth = getAuth(app);
