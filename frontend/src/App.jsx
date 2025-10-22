@@ -2,8 +2,8 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import Signup from './Signup';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Login from './Login';
-import OfferPage from './OfferPage';
-import ChatPage from './ChatPage';
+import OfferPage from './pages/OfferPage';
+import ChatPage from './pages/ChatPage';
 import TopMenu from './TopMenu'; // now a top bar
 
 function App() {

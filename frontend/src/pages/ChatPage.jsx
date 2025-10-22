@@ -1,6 +1,6 @@
 import React from 'react';
-import Sidebar from './chat_components/Sidebar';
-import ChatWindow from './chat_components/ChatWindow';
+import Sidebar from '../chat_components/Sidebar';
+import ChatWindow from '../chat_components/ChatWindow';
 
 const ChatPage = () => (
   <div className="d-flex vh-100">
