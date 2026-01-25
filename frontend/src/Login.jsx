@@ -2,6 +2,8 @@ import React from "react";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { auth } from './firebase'; 
+import { signInWithCustomToken } from "firebase/auth";
 
 function Login() {
 
@@ -10,25 +12,33 @@ function Login() {
     const [error, setError] = React.useState('');
     const navigate = useNavigate();
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        axios.post('http://localhost:3001/auth/login', { email, password })
-            .then(result => {
-                console.log(result);
-                console.log('Response data:', result.data);
-                if (result.data.success) {
-                    navigate('/'); // Redirect to home page on successful login
-                } else {
-                    setError(result.data.message); // Show error message
-                }
-            })
-            .catch(err => {
-                if (err.response && err.response.data && err.response.data.message) {
-                    setError(err.response.data.message);
-                } else {
-                    setError("An unexpected error occurred");
-                }
-            });
+        try{
+            // 1) Login via JWT Authentification
+            const result = await axios.post('http://localhost:3001/auth/login', {email, password});
+            if (!result.data.success) {
+                setError(result.data.message);
+                return;
+            }
+
+            // 2) Request firebase token
+            const jwt = result.data.token;
+            const tokenResponse = await axios.post('http://localhost:3001/chat/firebase-token',{},{headers: {Authorization: `Bearer ${jwt}`}});
+            const firebaseToken = tokenResponse.data.firebaseToken;
+
+            // 3) Sign in Firebase
+            await signInWithCustomToken(auth, firebaseToken);
+
+            // 4) Redirect after success
+            navigate('/');
+
+        } catch(err){
+            console.error("Login error:", err);
+            setError(err.response?.data?.message || "Login failed");
+        }
+        
+        
     };
 
     return (
