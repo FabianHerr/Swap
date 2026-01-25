@@ -19,12 +19,15 @@ app.use("/offer", offerRoutes);
 // Add startup logging
 console.log('Starting server...');
 
-// Connect to MongoDB
-connectDB();
+// Connect to MongoDB (non-blocking)
+connectDB().catch(err => {
+  console.error("Failed to connect to MongoDB:", err);
+});
 
-  
+// Start the server
 const server = app.listen(3001, () => {
-  console.log(`Server is running on port 3001`);
+  console.log(`🚀 Server is running on port 3001`);
+  console.log(`📡 API endpoints available at http://localhost:3001`);
 });
 
 
