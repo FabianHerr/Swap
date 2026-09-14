@@ -3,6 +3,7 @@ import Signup from './Signup';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './Login';
 import OfferPage from './pages/OfferPage';
+import BrowsePage from './pages/BrowsePage';
 import TopMenu from './TopMenu'; // now a top bar
 import RequireAuth from './RequireAuth';
 
@@ -24,10 +25,10 @@ function App() {
           }}
         >
           <Routes>
-            {/* TODO(Block 2): land on /offers once the Browse page exists */}
-            <Route path="/" element={<Navigate to="/offer" replace />} />
+            <Route path="/" element={<Navigate to="/offers" replace />} />
             <Route path="/register" element={<Signup />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/offers" element={<RequireAuth><BrowsePage /></RequireAuth>} />
             <Route path="/offer" element={<RequireAuth><OfferPage /></RequireAuth>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
