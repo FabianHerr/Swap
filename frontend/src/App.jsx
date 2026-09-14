@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './Login';
 import OfferPage from './pages/OfferPage';
 import BrowsePage from './pages/BrowsePage';
+import RequestsPage from './pages/RequestsPage';
 import TopMenu from './TopMenu'; // now a top bar
 import RequireAuth from './RequireAuth';
 
@@ -30,6 +31,7 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/offers" element={<RequireAuth><BrowsePage /></RequireAuth>} />
             <Route path="/offer" element={<RequireAuth><OfferPage /></RequireAuth>} />
+            <Route path="/requests" element={<RequireAuth><RequestsPage /></RequireAuth>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>

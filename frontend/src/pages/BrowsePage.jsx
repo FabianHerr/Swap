@@ -1,10 +1,78 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { FiArrowRight } from "react-icons/fi";
+import { FiArrowRight, FiCheck } from "react-icons/fi";
 import api from "../api";
 import { useAuth } from "../AuthContext";
 import useCurrencies from "../useCurrencies";
 import { formatAmount, timeAgo } from "../format";
+
+const MAX_NOTE_LENGTH = 280;
+
+// "Request swap" on someone else's offer: opens an optional note, then sends the request
+function RequestSwap({ offerId, requested, onRequested }) {
+  const [composing, setComposing] = useState(false);
+  const [note, setNote] = useState("");
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
+
+  if (requested) {
+    return (
+      <div className="mt-auto d-flex align-items-center gap-2 small">
+        <span className="text-success fw-bold"><FiCheck /> Requested</span>
+        <Link to="/requests" state={{ tab: "outgoing" }}>View</Link>
+      </div>
+    );
+  }
+
+  if (!composing) {
+    return (
+      <button className="btn btn-primary btn-sm mt-auto align-self-start" onClick={() => setComposing(true)}>
+        Request swap
+      </button>
+    );
+  }
+
+  const send = async (e) => {
+    e.preventDefault();
+    setSending(true);
+    setError("");
+    try {
+      await api.post("/requests", { offerId, message: note });
+      onRequested();
+    } catch (err) {
+      setError(err.response?.data?.message || "Couldn't send the request. Try again.");
+      setSending(false);
+    }
+  };
+
+  return (
+    <form className="mt-auto" onSubmit={send}>
+      <label htmlFor={`note-${offerId}`} className="form-label small fw-bold mb-1">Note (optional)</label>
+      <textarea
+        id={`note-${offerId}`}
+        className="form-control form-control-sm mb-1"
+        rows={2}
+        maxLength={MAX_NOTE_LENGTH}
+        placeholder="Where and when could you meet?"
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        autoFocus
+      />
+      <div className="d-flex justify-content-between align-items-center mb-2">
+        <span className="small text-danger">{error}</span>
+        <span className="small text-muted">{note.length}/{MAX_NOTE_LENGTH}</span>
+      </div>
+      <div className="d-flex gap-2">
+        <button type="submit" className="btn btn-primary btn-sm" disabled={sending}>
+          {sending ? "Sending…" : "Send request"}
+        </button>
+        <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => setComposing(false)}>
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
 
 function BrowsePage() {
   const { user } = useAuth();
@@ -17,6 +85,7 @@ function BrowsePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [confirmingId, setConfirmingId] = useState(null);
+  const [requestedOfferIds, setRequestedOfferIds] = useState(() => new Set());
   // Set when arriving from "Post offer", so the new card can be highlighted once
   const [postedOfferId] = useState(location.state?.postedOfferId);
 
@@ -24,6 +93,13 @@ function BrowsePage() {
   useEffect(() => {
     if (location.state?.postedOfferId) navigate(location.pathname, { replace: true, state: null });
   }, [location, navigate]);
+
+  // Offers you already asked for show "Requested" instead of the button
+  useEffect(() => {
+    api.get("/requests/outgoing")
+      .then((res) => setRequestedOfferIds(new Set(res.data.requests.map((r) => r.offer?._id).filter(Boolean))))
+      .catch(() => {}); // not critical: the server still rejects a duplicate request with a clear message
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -96,6 +172,14 @@ function BrowsePage() {
                       {isMine ? <span className="badge text-bg-light border me-1">Your offer</span> : offer.ownerName}
                       {" · "}{timeAgo(offer.createdAt)}
                     </div>
+
+                    {!isMine && (
+                      <RequestSwap
+                        offerId={offer._id}
+                        requested={requestedOfferIds.has(offer._id)}
+                        onRequested={() => setRequestedOfferIds((ids) => new Set(ids).add(offer._id))}
+                      />
+                    )}
 
                     {isMine && (
                       <div className="mt-auto d-flex gap-2">

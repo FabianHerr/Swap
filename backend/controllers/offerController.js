@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const OfferModel = require('../models/Offer');
+const SwapRequestModel = require('../models/SwapRequest');
 const { CURRENCIES, isCurrencyCode } = require("../utils/currencies");
 const { validateOffer, normalizeCode } = require("../utils/validateOffer");
 
@@ -59,7 +60,13 @@ exports.deleteOffer = async (req, res) => {
   if (!offer.owner.equals(req.user.userId)) {
     return res.status(403).json({ success: false, message: "You can only delete your own offers" });
   }
+  // An accepted request still points at a matched offer; both people rely on it
+  if (offer.status !== "open") {
+    return res.status(409).json({ success: false, message: "This offer was already matched and can't be deleted" });
+  }
 
   await offer.deleteOne();
+  // Anyone still waiting on this offer gets an answer instead of a request stuck on pending
+  await SwapRequestModel.updateMany({ offer: offer._id, status: "pending" }, { status: "declined" });
   res.json({ success: true, message: "Offer deleted" });
 };

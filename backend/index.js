@@ -12,6 +12,7 @@ const express = require("express");
 const cors = require("cors");
 const authRoutes = require("./routes/auth");
 const offerRoutes = require("./routes/offerRoutes");
+const requestRoutes = require("./routes/requestRoutes");
 
 const connectDB = require("./config/db");
 
@@ -21,6 +22,7 @@ app.use(cors());
 app.use("/auth", authRoutes);
 
 app.use("/offer", offerRoutes);
+app.use("/requests", requestRoutes);
 
 // Express 5 forwards errors from async handlers here; answer with JSON instead of the default HTML page
 app.use((err, req, res, next) => {
