@@ -1,4 +1,13 @@
 require("dotenv").config(); // Load env vars before any module reads process.env
+
+// Fail fast with a clear message instead of crashing later on the first login
+for (const key of ["MONGO_URI", "JWT_SECRET"]) {
+  if (!process.env[key]) {
+    console.error(`Missing required environment variable: ${key}`);
+    process.exit(1);
+  }
+}
+
 const express = require("express");
 const cors = require("cors");
 const authRoutes = require("./routes/auth");
@@ -12,6 +21,12 @@ app.use(cors());
 app.use("/auth", authRoutes);
 
 app.use("/offer", offerRoutes);
+
+// Express 5 forwards errors from async handlers here; answer with JSON instead of the default HTML page
+app.use((err, req, res, next) => {
+  console.error(err);
+  res.status(500).json({ success: false, message: "Something went wrong" });
+});
 
 
 // Add startup logging

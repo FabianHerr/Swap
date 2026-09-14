@@ -1,38 +1,34 @@
 import React from "react";
-import 'bootstrap/dist/css/bootstrap.min.css';
-import { Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { Link, Navigate, useLocation } from 'react-router-dom';
+import { useAuth } from './AuthContext';
 
 function Login() {
 
+    const { user, login } = useAuth();
     const [email, setEmail] = React.useState('');
     const [password, setPassword] = React.useState('');
     const [error, setError] = React.useState('');
-    const navigate = useNavigate();
+    const [submitting, setSubmitting] = React.useState(false);
+    const location = useLocation();
+
+    // Once logged in (or already logged in), go back to the page that asked for login
+    if (user) return <Navigate to={location.state?.from || '/'} replace />;
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        try{
-            // 1) Login via JWT Authentification
-            const result = await axios.post('http://localhost:3001/auth/login', {email, password});
-            if (!result.data.success) {
-                setError(result.data.message);
-                return;
-            }
-
-            // 2) Redirect after success
-            navigate('/');
-
-        } catch(err){
-            console.error("Login error:", err);
+        setError('');
+        setSubmitting(true);
+        try {
+            await login(email, password);
+        } catch (err) {
             setError(err.response?.data?.message || "Login failed");
+        } finally {
+            setSubmitting(false);
         }
-        
-        
     };
 
     return (
-        <div className="d-flex justify-content-center align-items-center vh-100 bg-light">
+        <div className="d-flex justify-content-center align-items-center bg-light" style={{ minHeight: 'calc(100vh - 64px)' }}>
             <div className="card shadow-sm" style={{ width: '400px' }}>
                 <div className="card-body">
                     <h2 className="card-title text-center mb-4">Login</h2>
@@ -44,8 +40,11 @@ function Login() {
                                 className="form-control"
                                 id="email"
                                 name="email"
+                                autoComplete="email"
                                 placeholder="Enter your email"
+                                value={email}
                                 onChange={(e) => setEmail(e.target.value)}
+                                required
                             />
                         </div>
                         <div className="mb-3">
@@ -55,12 +54,17 @@ function Login() {
                                 className="form-control"
                                 id="password"
                                 name="password"
+                                autoComplete="current-password"
                                 placeholder="Enter your password"
+                                value={password}
                                 onChange={(e) => setPassword(e.target.value)}
+                                required
                             />
                         </div>
                         {error && <div className="text-danger mb-3">{error}</div>}
-                        <button type="submit" className="btn btn-primary w-100 mb-3">Login</button>
+                        <button type="submit" className="btn btn-primary w-100 mb-3" disabled={submitting}>
+                            {submitting ? 'Logging in…' : 'Login'}
+                        </button>
                     </form>
                     <div className="text-center">
                         <p className="mb-0">Don't have an account?</p>

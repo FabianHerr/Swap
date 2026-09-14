@@ -1,9 +1,10 @@
 import 'bootstrap/dist/css/bootstrap.min.css';
 import Signup from './Signup';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './Login';
 import OfferPage from './pages/OfferPage';
 import TopMenu from './TopMenu'; // now a top bar
+import RequireAuth from './RequireAuth';
 
 function App() {
   return (
@@ -23,9 +24,12 @@ function App() {
           }}
         >
           <Routes>
+            {/* TODO(Block 2): land on /offers once the Browse page exists */}
+            <Route path="/" element={<Navigate to="/offer" replace />} />
             <Route path="/register" element={<Signup />} />
             <Route path="/login" element={<Login />} />
-            <Route path="/offer" element={<OfferPage />} />
+            <Route path="/offer" element={<RequireAuth><OfferPage /></RequireAuth>} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>
       </div>

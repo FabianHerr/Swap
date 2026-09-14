@@ -1,39 +1,37 @@
 import logo from "./assets/logo.svg";
-import React, { useState, useEffect } from "react";
-import { FiSearch, FiPlusCircle, FiMessageCircle, FiUser } from "react-icons/fi";
-import { FaSearch, FaPlusCircle, FaCommentDots, FaUser } from "react-icons/fa";
+import { useState } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
+import { FiSearch, FiPlusCircle, FiInbox, FiLogOut } from "react-icons/fi";
+import { FaSearch, FaPlusCircle, FaInbox } from "react-icons/fa";
+import { useAuth } from "./AuthContext";
+
+const links = [
+  { to: "/offers", label: "Browse offers", iconEmpty: FiSearch, iconFilled: FaSearch },
+  { to: "/offer", label: "Create offer", iconEmpty: FiPlusCircle, iconFilled: FaPlusCircle },
+  { to: "/requests", label: "Swap requests", iconEmpty: FiInbox, iconFilled: FaInbox },
+];
 
 const TopMenu = () => {
-  const [activeButton, setActiveButton] = useState("swap");
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [hoveredButton, setHoveredButton] = useState(null);
 
-  const buttons = [
-    { id: "browse", label: "Browse Offers", iconEmpty: FiSearch, iconFilled: FaSearch },
-    { id: "create", label: "Create Offer", iconEmpty: FiPlusCircle, iconFilled: FaPlusCircle },
-    { id: "messages", label: "Messages", iconEmpty: FiMessageCircle, iconFilled: FaCommentDots },
-  ];
+  const buttonStyle = (id, isActive, padding) => ({
+    justifyContent: "center",
+    padding,
+    borderRadius: "12px",
+    background: hoveredButton === id ? "#a0d8ff" : "transparent",
+    color: isActive ? "#fc65b3" : "#fff",
+    fontWeight: 700,
+    transition: "all 0.3s ease",
+    border: "none",
+    cursor: "pointer",
+  });
 
-  const handleButtonClick = (id) => {
-    // Only navigate, don't setActiveButton here (will be set based on URL in useEffect)
-    if (id === "create") {
-      window.location.href = "/offer";
-    } else if (id === "messages") {
-      window.location.href = "/messages";
-    }
-    // No navigation for "browse" or "profile" in this logic
-    console.log(`Navigating to: ${id}`);
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
   };
-
-  useEffect(() => {
-    const path = window.location.pathname;
-    if (path === "/offer") {
-      setActiveButton("create");
-    } else if (path === "/messages") {
-      setActiveButton("messages");
-    } else {
-      setActiveButton("swap");
-    }
-  }, []);
 
   return (
     <div
@@ -55,60 +53,49 @@ const TopMenu = () => {
           marginRight: "16px",
         }}
       >
-        <img src={logo} alt="Logo" style={{ height: "40px", width: "auto", display: "block" }} />
+        <img src={logo} alt="Swap" style={{ height: "40px", width: "auto", display: "block" }} />
       </div>
 
-      {/* Middle buttons */}
-      <nav className="d-flex flex-grow-1 justify-content-center">
-        {buttons.map((b) => {
-          const Icon = activeButton === b.id ? b.iconFilled : b.iconEmpty;
-          const isActive = activeButton === b.id;
-          const isHovered = hoveredButton === b.id;
-          return (
-            <button
-              key={b.id}
-              className={`btn d-flex align-items-center mx-2 ${isActive ? "shadow" : ""}`}
-              style={{
-                justifyContent: "center",
-                padding: "11px 48px",
-                borderRadius: "12px",
-                background: isHovered ? "#a0d8ff" : "transparent",
-                color: isActive ? "#fc65b3" : "#fff",
-                fontWeight: 700,
-                transition: "all 0.3s ease",
-                border: "none",
-                cursor: "pointer",
-              }}
-              onClick={() => handleButtonClick(b.id)}
-              onMouseEnter={() => setHoveredButton(b.id)}
-              onMouseLeave={() => setHoveredButton(null)}
-            >
-              <Icon size={28} />
-            </button>
-          );
-        })}
-      </nav>
+      {/* Navigation only makes sense once logged in */}
+      {user && (
+        <>
+          {/* Middle buttons */}
+          <nav className="d-flex flex-grow-1 justify-content-center">
+            {links.map((link) => (
+              <NavLink
+                key={link.to}
+                to={link.to}
+                end
+                title={link.label}
+                aria-label={link.label}
+                className={({ isActive }) => `btn d-flex align-items-center mx-2 ${isActive ? "shadow" : ""}`}
+                style={({ isActive }) => buttonStyle(link.to, isActive, "11px 48px")}
+                onMouseEnter={() => setHoveredButton(link.to)}
+                onMouseLeave={() => setHoveredButton(null)}
+              >
+                {({ isActive }) => {
+                  const Icon = isActive ? link.iconFilled : link.iconEmpty;
+                  return <Icon size={28} />;
+                }}
+              </NavLink>
+            ))}
+          </nav>
 
-      {/* Profile (far right) */}
-      <button
-        className={`btn d-flex align-items-center ${activeButton === "profile" ? "shadow" : ""}`}
-        style={{
-          justifyContent: "center",
-          padding: "14px 28px",
-          borderRadius: "12px",
-          background: hoveredButton === "profile" ? "#a0d8ff" : "transparent",
-          color: activeButton === "profile" ? "#fc65b3" : "#fff",
-          fontWeight: 700,
-          transition: "all 0.3s ease",
-          border: "none",
-          cursor: "pointer",
-        }}
-        onClick={() => handleButtonClick("profile")}
-        onMouseEnter={() => setHoveredButton("profile")}
-        onMouseLeave={() => setHoveredButton(null)}
-      >
-        {activeButton === "profile" ? <FaUser size={28} /> : <FiUser size={28} />}
-      </button>
+          {/* Logout (far right) */}
+          <button
+            className="btn d-flex align-items-center gap-2"
+            style={buttonStyle("logout", false, "14px 20px")}
+            title={`Log out ${user.name}`}
+            aria-label="Log out"
+            onClick={handleLogout}
+            onMouseEnter={() => setHoveredButton("logout")}
+            onMouseLeave={() => setHoveredButton(null)}
+          >
+            <span className="small" style={{ fontFamily: "system-ui, sans-serif" }}>{user.name}</span>
+            <FiLogOut size={24} />
+          </button>
+        </>
+      )}
     </div>
   );
 };

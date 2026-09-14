@@ -1,41 +1,42 @@
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import React from 'react';
-import 'bootstrap/dist/css/bootstrap.min.css';
-import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useAuth } from './AuthContext';
 
 const Signup = () => {
+  const { user, register } = useAuth();
   const [name, setName] = React.useState('');
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [confirmPassword, setConfirmPassword] = React.useState('');
   const [error, setError] = React.useState('');
-  const navigate = useNavigate();
+  const [submitting, setSubmitting] = React.useState(false);
 
-  const handleSubmit = (e) => {
+  // Registering logs you in, so this also handles "just signed up"
+  if (user) return <Navigate to="/" replace />;
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if(password !== confirmPassword) {
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters");
+      return;
+    }
+    if (password !== confirmPassword) {
       setError("Passwords do not match");
       return;
     }
     setError('');
-    axios.post('http://localhost:3001/auth/register', {name, email, password})
-      .then(result => {
-        if (result.data.success) {
-          navigate('/login'); // success
-        } else {
-          setError(result.data.message); // backend error
-        }
-      })
-      .catch(err => {
-        console.error(err); // log to console
-        setError(err.response?.data?.message || "Registration failed"); // show in UI
-      });
-
-  }
+    setSubmitting(true);
+    try {
+      await register(name, email, password);
+    } catch (err) {
+      setError(err.response?.data?.message || "Registration failed"); // show in UI
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
-    <div className="d-flex justify-content-center align-items-center vh-100 bg-light">
+    <div className="d-flex justify-content-center align-items-center bg-light" style={{ minHeight: 'calc(100vh - 64px)' }}>
       <div className="card shadow-sm" style={{ width: '400px' }}>
         <div className="card-body">
           <h2 className="card-title text-center mb-4">Sign Up</h2>
@@ -47,8 +48,11 @@ const Signup = () => {
                 className="form-control"
                 id="name"
                 name="name"
+                autoComplete="name"
                 placeholder="Enter your name"
-                onChange={(e) => setName(e.target.value)} 
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
               />
             </div>
             <div className="mb-3">
@@ -58,8 +62,11 @@ const Signup = () => {
                 className="form-control"
                 id="email"
                 name="email"
+                autoComplete="email"
                 placeholder="Enter your email"
+                value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                required
               />
             </div>
             <div className="mb-3">
@@ -69,8 +76,11 @@ const Signup = () => {
                 className="form-control"
                 id="password"
                 name="password"
-                placeholder="Enter your password"
+                autoComplete="new-password"
+                placeholder="At least 8 characters"
+                value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                required
               />
             </div>
             <div className="mb-3">
@@ -80,16 +90,21 @@ const Signup = () => {
                 className="form-control"
                 id="confirmPassword"
                 name="confirmPassword"
+                autoComplete="new-password"
                 placeholder="Confirm your password"
+                value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
+                required
               />
-              {error && <small className="text-danger">{error}</small>}
             </div>
-            <button type="submit" className="btn btn-primary w-100 mb-3">Sign Up</button>
+            {error && <div className="text-danger mb-3">{error}</div>}
+            <button type="submit" className="btn btn-primary w-100 mb-3" disabled={submitting}>
+              {submitting ? 'Creating account…' : 'Sign Up'}
+            </button>
           </form>
           <div className="text-center">
             <p className="mb-0">Already have an account?</p>
-            <Link to='/login'className="btn btn-link">Login</Link>
+            <Link to='/login' className="btn btn-link">Login</Link>
           </div>
         </div>
       </div>

@@ -15,8 +15,9 @@ function authMiddleware(req, res, next) {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         req.user = decoded; // Attach user info to request object
         next(); // Call the next middleware or route handler
-    } catch (error) {
-        return res.status(403).json({ success: false, message: "Invalid token" });
+    } catch {
+        // 401 = not authenticated (the frontend logs out on it). 403 is kept for "authenticated but not allowed".
+        return res.status(401).json({ success: false, message: "Invalid or expired token" });
     }
 }
 
