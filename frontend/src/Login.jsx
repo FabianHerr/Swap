@@ -2,8 +2,6 @@ import React from "react";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { auth } from './firebase'; 
-import { signInWithCustomToken } from "firebase/auth";
 
 function Login() {
 
@@ -22,15 +20,7 @@ function Login() {
                 return;
             }
 
-            // 2) Request firebase token
-            const jwt = result.data.token;
-            const tokenResponse = await axios.post('http://localhost:3001/chat/firebase-token',{},{headers: {Authorization: `Bearer ${jwt}`}});
-            const firebaseToken = tokenResponse.data.firebaseToken;
-
-            // 3) Sign in Firebase
-            await signInWithCustomToken(auth, firebaseToken);
-
-            // 4) Redirect after success
+            // 2) Redirect after success
             navigate('/');
 
         } catch(err){

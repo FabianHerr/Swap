@@ -1,6 +1,5 @@
-require('dotenv').config();
-const UserModel = require('../models/User'); // Adjust the path as necessary
-const bcrypt = require("bcrypt"); 
+const UserModel = require('../models/User');
+const bcrypt = require("bcryptjs"); // bcryptjs is the one in package.json; "bcrypt" only resolved from a stray ~/repos/node_modules
 const jwt = require("jsonwebtoken");
 
 // Login user
