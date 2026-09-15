@@ -101,7 +101,41 @@ load-bearing; borders carry the weight). No card, panel or button uses a drop sh
 - **Auth (Log in / Sign up):** no sidebar. A full-bleed split: a `--sidebar`-tinted left panel (logo,
   headline, muted lead, and a small non-interactive example list card + detail excerpt labeled "EXAMPLE")
   and a white right panel with the form in a bordered card. Below 900px the left panel is hidden and the
-  form is centered alone.
+  form is centered alone. The left panel's inner content now caps at 520px (was 480px) now that the
+  landing page carries the main pitch; the logo links to `/`.
+- **Landing page (`/`, logged out only):** full-bleed, no sidebar, built entirely from existing tokens
+  and components (`ListCard`, `FlagPair`, `Flag`, `Avatar`, `ContactSlot`, `.panel.detail-panel`, `.btn`,
+  `.eyebrow`) so it reads as the same product, not a marketing microsite. `RequireAuth`'s guard pattern
+  (check `useAuth()`, return `null` while a saved session is restoring, `<Navigate>` once a user is known)
+  lives in `LandingPage.jsx` itself, same as `Login`/`Signup` already do; `App.jsx` just adds `/` to the
+  no-sidebar route list and routes it to `<LandingPage />` instead of the old `<Navigate to="/offers">`.
+  Sections, top to bottom:
+  - **Sticky top bar:** logo left (links to `/`), "Log in" (quiet) + "Create account" (primary) right;
+    the primary button's label swaps to "Sign up" below 480px via a CSS-only `.cta-full`/`.cta-short`
+    toggle (`display: none`, so assistive tech only ever sees one label).
+  - **Hero:** an asymmetric two-column grid (`minmax(0,1fr) minmax(0,440px)`, `align-items: start`), not
+    centered. Left: mono eyebrow, a large display headline ("Swap the cash you have left over."), a
+    muted lead sentence, one primary CTA + a quiet arrow link. Right: a non-interactive, `aria-hidden` +
+    `inert` product visual, a mono "Example" eyebrow over three `ListCard`s (one selected, pink) and a
+    `detail-panel` excerpt, using the same realistic example ("Amara T.", "250 EUR → 370 CAD", a rate
+    that's the poster's own arithmetic, never a market rate) already established in `AuthIntro`.
+  - **How it works:** numbered rows (01/02/03), not equal feature cards, each a hairline-divided row with
+    a title, one sentence, and a small real-component illustration on the right: a `FlagPair` (posting), a
+    `.detail-note` quoted blockquote (the request note), and a real `ContactSlot` pair showing the sealed
+    state next to the opened state (accepting).
+  - **What Swap does, and doesn't:** a two-column ledger (`.landing-ledger`, hairline row dividers, term
+    left / plain-language fact right) instead of icon tiles — private email, your own rate, no fees or
+    held cash, in-person meetups on your terms.
+  - **Currencies:** every code from `useCurrencies()` (the same public `/offer/currencies` list the rest
+    of the app uses, so this can never drift from what the server accepts) as a round `Flag` + mono code,
+    wrapping in a flex grid.
+  - **Closing CTA band:** same light page background (a `--sidebar`-tinted band only for the facts
+    section above it, for rhythm) — no dark section anywhere on the page.
+  - **Footer:** logo, Log in / Create account links, and one honesty line ("Swap never holds your money,
+    sets rates, or charges fees.").
+  - **Motion:** hero text and visual fade/rise in once on load (`enter()` from `motion.js`, 200ms, 6px,
+    staggered). Every section below reveals once on scroll (`whileInView`, `viewport={{ once: true }}`,
+    same 200ms/6px/ease-out), never on repeat scroll past.
 
 ## 5. Layout Principles
 

@@ -1,4 +1,5 @@
 import { AR, AU, BR, CA, CH, CL, CN, CO, DO, EU, GB, HT, IN, JP, MA, MX, PE, PH, US } from "country-flag-icons/react/1x1";
+import { Link } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
 import {
   PiArrowUpRightBold,
@@ -275,9 +276,9 @@ export function Flash({ tone = "ok", message }) {
 export function AuthIntro({ logo }) {
   return (
     <aside className="auth-panel-inner" aria-label="About Swap">
-      <div className="auth-logo">
+      <Link className="auth-logo" to="/" aria-label="Swap home">
         <img src={logo} alt="Swap" />
-      </div>
+      </Link>
       <p className="auth-display">Swap the cash you have left over.</p>
       <p className="auth-lead">Post the cash you have and what you want for it. Emails stay private until you accept a request.</p>
 

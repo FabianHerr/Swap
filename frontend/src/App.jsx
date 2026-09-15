@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { MotionConfig, motion } from 'motion/react';
 import Signup from './Signup';
 import Login from './Login';
+import LandingPage from './pages/LandingPage';
 import OfferPage from './pages/OfferPage';
 import BrowsePage from './pages/BrowsePage';
 import RequestsPage from './pages/RequestsPage';
@@ -9,7 +10,8 @@ import TopMenu from './TopMenu';
 import RequireAuth from './RequireAuth';
 import { ease } from './motion';
 
-const AUTH_ROUTES = ['/login', '/register'];
+// The landing page is full-bleed with no sidebar, same as Log in and Sign up
+const AUTH_ROUTES = ['/', '/login', '/register'];
 
 // Each page fades in when you arrive. Opacity only: pages are visited often.
 function Pages() {
@@ -24,7 +26,7 @@ function Pages() {
       transition={{ duration: 0.2, ease: ease.out }}
     >
       <Routes location={location}>
-        <Route path="/" element={<Navigate to="/offers" replace />} />
+        <Route path="/" element={<LandingPage />} />
         <Route path="/register" element={<Signup />} />
         <Route path="/login" element={<Login />} />
         <Route path="/offers" element={<RequireAuth><BrowsePage /></RequireAuth>} />

@@ -136,8 +136,8 @@ function BrowsePage() {
   const { currencies } = useCurrencies();
 
   const [tab, setTab] = useState("market");
-  const [have, setHave] = useState("");
-  const [need, setNeed] = useState("");
+  const [have, setHave] = useState(() => location.state?.filters?.have || "");
+  const [need, setNeed] = useState(() => location.state?.filters?.need || "");
   const [flips, setFlips] = useState(0);
   const [search, setSearch] = useState("");
   const [offers, setOffers] = useState([]);
@@ -157,10 +157,23 @@ function BrowsePage() {
   // Set when arriving from "Post offer": the new offer is selected and a notice says it's live
   const [postedOfferId] = useState(location.state?.postedOfferId);
   const [postedNotice, setPostedNotice] = useState(Boolean(postedOfferId));
+  // Set when arriving from the assistant panel: an offer to select once the (possibly refiltered) list has loaded
+  const [pendingSelectId, setPendingSelectId] = useState(location.state?.selectOfferId ?? null);
 
+  // Applies router state handed in by "Post offer" or the assistant panel, then clears it so a
+  // refresh or back-navigation doesn't redo it. Keyed on location.key (not just on mount) so
+  // navigating to /offers again with fresh state, while already here, is picked up too.
   useEffect(() => {
-    if (location.state?.postedOfferId) navigate(location.pathname, { replace: true, state: null });
-  }, [location, navigate]);
+    const state = location.state;
+    if (!state) return;
+    if (state.filters) {
+      setHave(state.filters.have || "");
+      setNeed(state.filters.need || "");
+    }
+    if (state.selectOfferId) setPendingSelectId(state.selectOfferId);
+    navigate(location.pathname, { replace: true, state: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.key]);
 
   useEffect(() => {
     if (!postedNotice) return;
@@ -222,18 +235,28 @@ function BrowsePage() {
     return base;
   }, [offers, tab, search, user._id]);
 
-  // Keep the selection valid as the list changes; default to the just-posted offer, or the first row
+  // Keep the selection valid as the list changes; prefer a pending assistant match, then the
+  // just-posted offer, then the first row. A pending match arrives alongside new filters, so the
+  // list may still be mid-refetch for those filters when this runs; only consume (clear) the
+  // pending id once it's actually found, rather than on the first pass, so a stale intermediate
+  // list can't cause it to be dropped before the refiltered list arrives.
   useEffect(() => {
     if (list.length === 0) {
       setSelectedId(null);
       return;
     }
+    const foundPending = pendingSelectId && list.some((o) => o._id === pendingSelectId);
     setSelectedId((current) => {
+      if (foundPending) return pendingSelectId;
       if (current && list.some((o) => o._id === current)) return current;
       if (postedOfferId && list.some((o) => o._id === postedOfferId)) return postedOfferId;
       return list[0]._id;
     });
-  }, [list, postedOfferId]);
+    if (foundPending) {
+      setMobileDetailOpen(true);
+      setPendingSelectId(null);
+    }
+  }, [list, postedOfferId, pendingSelectId]);
 
   const selected = list.find((o) => o._id === selectedId) || null;
 

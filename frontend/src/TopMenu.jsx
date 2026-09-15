@@ -1,12 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
-import { PiListBold, PiPlusCircle, PiSignOut, PiSquaresFour, PiTray, PiX } from "react-icons/pi";
+import { PiListBold, PiPlusCircle, PiSignOut, PiSparkle, PiSparkleBold, PiSquaresFour, PiTray, PiX } from "react-icons/pi";
 import logo from "./assets/logo.svg";
 import api from "./api";
 import { useAuth } from "./AuthContext";
 import { Avatar, Count } from "./ui";
 import { settle } from "./motion";
+import AssistantPanel from "./AssistantPanel";
 
 const POLL_MS = 15000;
 
@@ -51,6 +52,25 @@ const TopMenu = () => {
   const location = useLocation();
   const pending = usePendingCount(user);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [assistantOpen, setAssistantOpen] = useState(false);
+
+  // AssistantPanel saves document.activeElement (to refocus it on close) in an effect that runs
+  // right after the DOM commits `open`. If the fab hid in that same commit, it would already be
+  // blurred by the time that effect runs, so the panel would capture <body> instead of the fab.
+  // fabSettledOpen only flips true a tick after assistantOpen does, so the fab is still mounted
+  // (and still focused) when that capture happens. Closing reveals the fab immediately, in the
+  // same render as assistantOpen going false however it closed (Escape, backdrop, the panel's
+  // own close button, or Cmd/Ctrl+K), so the panel's restore-focus effect finds it already there.
+  const [fabSettledOpen, setFabSettledOpen] = useState(false);
+  const prevAssistantOpenRef = useRef(assistantOpen);
+  if (prevAssistantOpenRef.current !== assistantOpen) {
+    prevAssistantOpenRef.current = assistantOpen;
+    if (!assistantOpen && fabSettledOpen) setFabSettledOpen(false);
+  }
+  useEffect(() => {
+    if (assistantOpen) setFabSettledOpen(true);
+  }, [assistantOpen]);
+  const fabHidden = assistantOpen && fabSettledOpen;
 
   // A navigation, or the escape key, always closes the mobile drawer
   useEffect(() => setDrawerOpen(false), [location.pathname]);
@@ -66,6 +86,28 @@ const TopMenu = () => {
     document.querySelector(".app")?.classList.toggle("drawer-open", drawerOpen);
     return () => document.querySelector(".app")?.classList.remove("drawer-open");
   }, [drawerOpen]);
+
+  // Cmd/Ctrl+K toggles the assistant from anywhere in the app shell, only while logged in.
+  // Opening it closes the mobile drawer so the two overlays never fight for the screen.
+  useEffect(() => {
+    if (!user) return;
+    const onKey = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setAssistantOpen((open) => {
+          if (!open) setDrawerOpen(false);
+          return !open;
+        });
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [user]);
+
+  const openAssistant = () => {
+    setDrawerOpen(false);
+    setAssistantOpen(true);
+  };
 
   const handleLogout = () => {
     logout();
@@ -116,6 +158,10 @@ const TopMenu = () => {
                 )}
               </NavLink>
             ))}
+            <button type="button" className="sidebar-item" onClick={openAssistant}>
+              <PiSparkle aria-hidden="true" />
+              <span>Ask Swap</span>
+            </button>
           </nav>
 
           <div className="sidebar-bottom">
@@ -137,6 +183,17 @@ const TopMenu = () => {
         tabIndex={-1}
         onClick={() => setDrawerOpen(false)}
       />
+      <button
+        type="button"
+        className="assistant-fab"
+        hidden={fabHidden}
+        aria-label="Ask Swap"
+        title="Ask Swap (⌘K)"
+        onClick={openAssistant}
+      >
+        <PiSparkleBold aria-hidden="true" />
+      </button>
+      <AssistantPanel open={assistantOpen} onClose={() => setAssistantOpen(false)} />
     </>
   );
 };
