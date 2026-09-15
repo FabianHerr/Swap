@@ -1,0 +1,73 @@
+name: CI
+
+# Runs on every pull request and on pushes to the long-lived branches.
+# No secrets are used: the API runs against a scratch MongoDB, and the parser's AI fallback stays off,
+# so these checks also prove the rules work without a key.
+on:
+  pull_request:
+  push:
+    branches: [main, Fabian]
+
+jobs:
+  api:
+    name: API checks
+    runs-on: ubuntu-latest
+    services:
+      mongo:
+        image: mongo:7
+        ports: ["27017:27017"]
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.runCommand({ping:1}).ok'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      MONGO_URI: mongodb://127.0.0.1:27017/swap_ci
+      JWT_SECRET: ci-only-not-a-real-secret
+      CLIENT_ORIGIN: http://localhost:5173
+      PORT: "3001"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+
+      # The parser and assistant rules: no network, no database
+      - name: Offer parser eval
+        run: npm run eval:parser
+      - name: Assistant eval
+        run: npm run eval:assistant
+
+      # The real flows over HTTP: auth, ownership, and contact details only after an accept
+      - name: Start the API
+        run: |
+          npm start &
+          for i in $(seq 1 30); do
+            curl -fs http://localhost:3001/health && break
+            sleep 1
+          done
+      - name: Smoke test
+        run: API_URL=http://localhost:3001 npm run smoke
+
+  web:
+    name: Web checks
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build

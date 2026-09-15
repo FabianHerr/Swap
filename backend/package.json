@@ -6,6 +6,7 @@
     "start": "node index.js",
     "dev": "nodemon index.js",
     "seed": "node scripts/seed.js",
+    "smoke": "node scripts/smoke.js",
     "eval:parser": "node scripts/eval-parser.js",
     "eval:assistant": "node scripts/eval-assistant.js"
   },
