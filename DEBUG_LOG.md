@@ -11,8 +11,8 @@ Short notes on things that broke while finishing Swap: symptom → what I checke
 ## 2026-09-14: MongoDB won't connect: `querySrv ENOTFOUND`
 - **Symptom:** Server starts, then `MongoDB Connection Error: querySrv ENOTFOUND _mongodb._tcp.swap-cluster...mongodb.net`.
 - **Checked:** Is it my network? `dig A google.com` and `dig SRV _imaps._tcp.gmail.com` both resolve, so DNS and SRV lookups work. `dig SRV` for the cluster → `NXDOMAIN`, answered by mongodb.net's own nameserver.
-- **Cause:** The Atlas cluster no longer exists (the project sat idle since January), so the connection string in `.env` points at nothing.
-- **Fix:** New free Atlas cluster + new `MONGO_URI`. Also noted: the server keeps listening even when the DB is down, so requests just hang. That's the reason for a `/health` endpoint that reports DB state.
+- **Cause:** The Atlas cluster was **paused**, not deleted. Atlas pauses free clusters that sit idle (this project had been idle since January), and a paused cluster's SRV records stop resolving, which looks exactly like a deleted one from the client side.
+- **Fix:** Resumed the cluster from the Atlas dashboard; the original `MONGO_URI` worked again. (My first reading was "the cluster is gone, make a new one". Worth correcting here: `NXDOMAIN` on an Atlas SRV record means "not reachable right now", not "does not exist" - check the dashboard before rebuilding anything.) Also noted: the server keeps listening even when the DB is down, so requests just hang. That's the reason for a `/health` endpoint that reports DB state.
 
 ## 2026-09-14: A normal Colombian peso offer was rejected as "too much"
 - **Symptom:** After adding a "want" amount to offers, posting "Have 400 CAD, want 1,150,000 COP" failed with `Amount can't be more than 1,000,000`.

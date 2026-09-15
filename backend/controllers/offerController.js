@@ -5,6 +5,7 @@ const SwapRequestModel = require('../models/SwapRequest');
 const { CURRENCIES, isCurrencyCode } = require("../utils/currencies");
 const { validateOffer, normalizeCode } = require("../utils/validateOffer");
 const { parseOffer, MAX_TEXT_LENGTH } = require("../services/offerParser");
+const UserModel = require('../models/User');
 const { ownerProfiles } = require("../services/ownerProfiles");
 const { takeLlmSlot } = require("../utils/llmQuota");
 
@@ -26,12 +27,23 @@ exports.createOffer = async (req, res) => {
   const parsed = ["rules", "llm"].includes(source) && typeof rawInput === "string"
     && rawInput.trim() && rawInput.length <= MAX_TEXT_LENGTH;
 
+  // The name is copied onto the offer so Browse needs no lookup per card. Tokens issued before names
+  // were required carry none, so fall back to the account rather than failing with a 500.
+  let ownerName = String(req.user.name ?? "").trim();
+  if (!ownerName) {
+    const owner = await UserModel.findById(req.user.userId, "name");
+    ownerName = String(owner?.name ?? "").trim();
+  }
+  if (!ownerName) {
+    return res.status(400).json({ success: false, message: "Add your name to your account before posting an offer." });
+  }
+
   // Owner always comes from the verified token, never from the request body
   const offer = await OfferModel.create({
     ...value,
     ...(parsed ? { source, rawInput: rawInput.trim() } : { source: "form" }),
     owner: req.user.userId,
-    ownerName: req.user.name,
+    ownerName,
   });
 
   res.status(201).json({ success: true, message: "Offer posted successfully", offer });

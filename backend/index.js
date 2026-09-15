@@ -8,6 +8,12 @@ for (const key of ["MONGO_URI", "JWT_SECRET"]) {
   }
 }
 
+// In production the frontend is on another domain, so a missing allowlist means every browser call is
+// blocked by CORS while curl still works (see DEBUG_LOG.md). Warn loudly instead of failing silently.
+if (process.env.NODE_ENV === "production" && !process.env.CLIENT_ORIGIN) {
+  console.warn("CLIENT_ORIGIN is not set: browser requests from the deployed frontend will be blocked by CORS");
+}
+
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
@@ -17,9 +23,11 @@ const requestRoutes = require("./routes/requestRoutes");
 const assistantRoutes = require("./routes/assistantRoutes");
 
 const connectDB = require("./config/db");
+const { requestLogger, errorHandler } = require("./middleware/requestLogger");
 
 const app = express();
 app.use(express.json());
+app.use(requestLogger);
 // Only the frontend may call the API from a browser. CLIENT_ORIGIN can list several, comma-separated.
 const allowedOrigins = (process.env.CLIENT_ORIGIN || "http://localhost:5173").split(",").map((o) => o.trim());
 app.use(cors({ origin: allowedOrigins }));
@@ -37,11 +45,9 @@ app.use("/offer", offerRoutes);
 app.use("/requests", requestRoutes);
 app.use("/assistant", assistantRoutes);
 
-// Express 5 forwards errors from async handlers here; answer with JSON instead of the default HTML page
-app.use((err, req, res, next) => {
-  console.error(err);
-  res.status(500).json({ success: false, message: "Something went wrong" });
-});
+// Express 5 forwards errors from async handlers here; answer with JSON (and the request id) instead
+// of the default HTML page
+app.use(errorHandler);
 
 
 // Add startup logging
