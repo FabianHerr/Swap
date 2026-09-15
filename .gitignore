@@ -1,0 +1,7 @@
+# Playwright MCP screenshots and logs from local UI testing
+.playwright-mcp/
+
+# Impeccable scratch: review screenshots, decision-page logs, direction payload
+.impeccable/review/
+.impeccable/questions/
+.impeccable/direction-payload.json

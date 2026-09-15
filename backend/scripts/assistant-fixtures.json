@@ -1,0 +1,38 @@
+{
+  "about": "Ask Swap intent cases, checked with rules only. `intent` is what the rules must decide (null = the rules can't tell, so it goes to the LLM or to help). `filters` is checked for search cases, `fields` for fill_form and find_matches (missing keys must be absent). `llm` says whether the message should ask the model.",
+  "intents": [
+    { "text": "Post 250 EUR for 370 CAD", "intent": "fill_form", "llm": false,
+      "fields": { "giveAmount": 250, "giveCurrency": "EUR", "wantAmount": 370, "wantCurrency": "CAD" } },
+    { "text": "Can you create an offer: I have 5000 yen and want 45 bucks", "intent": "fill_form", "llm": false,
+      "fields": { "giveAmount": 5000, "giveCurrency": "JPY", "wantAmount": 45, "wantCurrency": "USD" } },
+    { "text": "publier 200 euros contre 300 dollars canadiens", "intent": "fill_form", "llm": false,
+      "fields": { "giveAmount": 200, "giveCurrency": "EUR", "wantAmount": 300, "wantCurrency": "CAD" } },
+    { "text": "Show me offers selling euros", "intent": "search", "llm": false, "filters": { "need": "EUR" } },
+    { "text": "who has swiss francs", "intent": "search", "llm": false, "filters": { "need": "CHF" } },
+    { "text": "I need euros", "intent": "search", "llm": false, "filters": { "need": "EUR" } },
+    { "text": "who wants my yen?", "intent": "search", "llm": false, "filters": { "have": "JPY" } },
+    { "text": "busca ofertas de pesos colombianos", "intent": "search", "llm": false, "filters": { "need": "COP" } },
+    { "text": "any offers for CAD to EUR", "intent": "search", "llm": false, "filters": { "have": "CAD", "need": "EUR" } },
+    { "text": "I have 400 CAD and want Colombian pesos", "intent": "find_matches", "llm": false,
+      "fields": { "giveAmount": 400, "giveCurrency": "CAD", "wantCurrency": "COP" } },
+    { "text": "find me a match for 300 USD, I want 400 CAD", "intent": "find_matches", "llm": false,
+      "fields": { "giveAmount": 300, "giveCurrency": "USD", "wantAmount": 400, "wantCurrency": "CAD" } },
+    { "text": "tengo 500 soles y quiero dólares americanos", "intent": "find_matches", "llm": false,
+      "fields": { "giveAmount": 500, "giveCurrency": "PEN", "wantCurrency": "USD" } },
+    { "text": "match me: 300 pesos for dollars", "intent": "find_matches", "llm": true },
+    { "text": "hello", "intent": null, "llm": true },
+    { "text": "what can I do here", "intent": null, "llm": true }
+  ],
+  "matching": {
+    "you": { "giveAmount": 400, "giveCurrency": "CAD", "wantAmount": 1150000, "wantCurrency": "COP" },
+    "offers": [
+      { "_id": "far", "giveAmount": 3000000, "giveCurrency": "COP", "wantAmount": 1050, "wantCurrency": "CAD", "createdAt": "2026-09-15T10:00:00Z" },
+      { "_id": "exact", "giveAmount": 1150000, "giveCurrency": "COP", "wantAmount": 400, "wantCurrency": "CAD", "createdAt": "2026-09-10T10:00:00Z" },
+      { "_id": "close-amount-worse-rate", "giveAmount": 900000, "giveCurrency": "COP", "wantAmount": 380, "wantCurrency": "CAD", "createdAt": "2026-09-14T10:00:00Z" },
+      { "_id": "close-amount-close-rate", "giveAmount": 1100000, "giveCurrency": "COP", "wantAmount": 380, "wantCurrency": "CAD", "createdAt": "2026-09-12T10:00:00Z" }
+    ],
+    "expectedOrder": ["exact", "close-amount-close-rate", "close-amount-worse-rate", "far"],
+    "expectedFirstReasons": ["Wants 400 CAD, the amount you have", "Same rate as yours"],
+    "newestFirstWithoutAmounts": ["far", "close-amount-worse-rate", "close-amount-close-rate", "exact"]
+  }
+}
