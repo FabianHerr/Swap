@@ -1,9 +1,12 @@
+const crypto = require("crypto");
 const mongoose = require("mongoose");
 const OfferModel = require('../models/Offer');
 const SwapRequestModel = require('../models/SwapRequest');
-const UserModel = require('../models/User');
 const { CURRENCIES, isCurrencyCode } = require("../utils/currencies");
 const { validateOffer, normalizeCode } = require("../utils/validateOffer");
+const { parseOffer, MAX_TEXT_LENGTH } = require("../services/offerParser");
+const { ownerProfiles } = require("../services/ownerProfiles");
+const { takeLlmSlot } = require("../utils/llmQuota");
 
 // Supported currencies, so the frontend builds its dropdowns from the same list the API validates against
 exports.getCurrencies = (req, res) => {
@@ -17,9 +20,16 @@ exports.createOffer = async (req, res) => {
     return res.status(400).json({ success: false, message: Object.values(errors)[0], errors });
   }
 
+  // When the parser filled the form, keep what was pasted and who read it (rules or LLM), so a bad
+  // parse can be traced back to its input. Anything else is recorded as typed into the form.
+  const { source, rawInput } = req.body ?? {};
+  const parsed = ["rules", "llm"].includes(source) && typeof rawInput === "string"
+    && rawInput.trim() && rawInput.length <= MAX_TEXT_LENGTH;
+
   // Owner always comes from the verified token, never from the request body
   const offer = await OfferModel.create({
     ...value,
+    ...(parsed ? { source, rawInput: rawInput.trim() } : { source: "form" }),
     owner: req.user.userId,
     ownerName: req.user.name,
   });
@@ -27,30 +37,36 @@ exports.createOffer = async (req, res) => {
   res.status(201).json({ success: true, message: "Offer posted successfully", offer });
 };
 
-// What Swap actually knows about each offer's owner, so a card can say who you'd be meeting:
-// when they joined, and how many swap requests they've had accepted (as owner or requester).
-// Swap has no ratings or identity checks, so nothing here pretends to be one.
-async function ownerProfiles(ownerIds) {
-  const ids = [...new Set(ownerIds.map(String))].map((id) => new mongoose.Types.ObjectId(id));
-  if (ids.length === 0) return {};
-  const acceptedBy = (field) => SwapRequestModel.aggregate([
-    { $match: { status: "accepted", [field]: { $in: ids } } },
-    { $group: { _id: `$${field}`, count: { $sum: 1 } } },
-  ]);
-  const [users, asOwner, asRequester] = await Promise.all([
-    UserModel.find({ _id: { $in: ids } }, "createdAt"),
-    acceptedBy("owner"),
-    acceptedBy("requester"),
-  ]);
+// Read a pasted offer ("j'ai 250 euros, je cherche 370 dollars canadiens") into form fields.
+// Never creates an offer: the frontend fills the form and the user posts it.
+exports.parseOffer = async (req, res) => {
+  const text = String(req.body?.text ?? "").trim();
+  if (!text) return res.status(422).json({ success: false, message: "Paste or type an offer first." });
+  if (text.length > MAX_TEXT_LENGTH) {
+    return res.status(422).json({ success: false, message: `Keep it under ${MAX_TEXT_LENGTH} characters.` });
+  }
+  if (!/\d/.test(text)) {
+    return res.status(422).json({ success: false, message: "Write the amount in numbers, like 250 euros." });
+  }
 
-  const accepted = {};
-  for (const { _id, count } of [...asOwner, ...asRequester]) accepted[_id] = (accepted[_id] || 0) + count;
-  return Object.fromEntries(users.map((user) => [user._id, {
-    // Accounts created before timestamps were added still carry their creation time in the id
-    memberSince: user.createdAt ?? user._id.getTimestamp(),
-    acceptedSwaps: accepted[user._id] || 0,
-  }]));
-}
+  const started = Date.now();
+  const result = await parseOffer(text, { allowLlm: () => takeLlmSlot(req.user.userId) });
+
+  // One line per parse, to see how often rules are enough and where parses come back incomplete.
+  // The text itself isn't logged.
+  console.log(JSON.stringify({
+    event: "offer_parse", reqId: crypto.randomUUID(), userId: req.user.userId, source: result.source,
+    llm: result.meta.llm, ms: Date.now() - started, complete: result.complete, missing: result.missing,
+  }));
+
+  res.json({
+    success: true,
+    source: result.source,
+    complete: result.complete,
+    fields: result.fields,
+    warnings: result.warnings,
+  });
+};
 
 // Open offers, newest first, each with its owner's profile. Optional ?give=USD&want=CAD filters.
 exports.getOffers = async (req, res) => {

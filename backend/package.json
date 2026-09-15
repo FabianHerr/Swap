@@ -4,7 +4,9 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js"
+    "dev": "nodemon index.js",
+    "eval:parser": "node scripts/eval-parser.js",
+    "eval:assistant": "node scripts/eval-assistant.js"
   },
   "keywords": [],
   "author": "",

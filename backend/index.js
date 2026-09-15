@@ -14,6 +14,7 @@ const mongoose = require("mongoose");
 const authRoutes = require("./routes/auth");
 const offerRoutes = require("./routes/offerRoutes");
 const requestRoutes = require("./routes/requestRoutes");
+const assistantRoutes = require("./routes/assistantRoutes");
 
 const connectDB = require("./config/db");
 
@@ -34,6 +35,7 @@ app.use("/auth", authRoutes);
 
 app.use("/offer", offerRoutes);
 app.use("/requests", requestRoutes);
+app.use("/assistant", assistantRoutes);
 
 // Express 5 forwards errors from async handlers here; answer with JSON instead of the default HTML page
 app.use((err, req, res, next) => {
