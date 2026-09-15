@@ -447,7 +447,8 @@ function BrowsePage() {
         </div>
         <div className="pair-picker" role="group" aria-label="Filter offers by currency">
           <div className="pair-field">
-            <CurrencySelect id="filter-have" aria-label="You have" value={have} onChange={(e) => setHave(e.target.value)}>
+            <label htmlFor="filter-have" className="converter-label">You have</label>
+            <CurrencySelect id="filter-have" value={have} onChange={(e) => setHave(e.target.value)}>
               <option value="">Any</option>
               {currencyOptions}
             </CurrencySelect>
@@ -458,7 +459,8 @@ function BrowsePage() {
             </motion.span>
           </button>
           <div className="pair-field">
-            <CurrencySelect id="filter-need" aria-label="You need" value={need} onChange={(e) => setNeed(e.target.value)}>
+            <label htmlFor="filter-need" className="converter-label">You need</label>
+            <CurrencySelect id="filter-need" value={need} onChange={(e) => setNeed(e.target.value)}>
               <option value="">Any</option>
               {currencyOptions}
             </CurrencySelect>
@@ -515,6 +517,13 @@ function BrowsePage() {
             </AnimatePresence>
           </div>
         </div>
+      )}
+
+      {tab === "mine" && (
+        <p className="hint mine-hint">
+          Matched offers aren&rsquo;t listed here since they&rsquo;re no longer open. See them in{" "}
+          <Link to="/requests">Requests</Link>.
+        </p>
       )}
     </>
   );

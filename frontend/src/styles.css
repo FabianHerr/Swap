@@ -997,6 +997,7 @@ a {
 .filters {
   display: flex;
   flex-wrap: wrap;
+  align-items: flex-end;
   gap: 10px;
   margin-top: 20px;
 }
@@ -1008,7 +1009,7 @@ a {
 
 .pair-picker {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 8px;
 }
 
@@ -1139,12 +1140,16 @@ a {
 .list-card-meta {
   display: flex;
   align-items: center;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 4px 8px;
   margin-top: 2px;
   font-size: 0.75rem;
   color: var(--faint);
-  white-space: nowrap;
   overflow: hidden;
+}
+
+.list-card-meta > * {
+  white-space: nowrap;
 }
 
 .list-card-meta svg {
@@ -1153,6 +1158,15 @@ a {
 
 .list-card-meta .tag {
   flex-shrink: 0;
+}
+
+.mine-hint {
+  margin-top: 16px;
+}
+
+.mine-hint a {
+  color: var(--pink-text);
+  text-decoration: underline;
 }
 
 .list-empty-hint {
