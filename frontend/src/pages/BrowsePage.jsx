@@ -1,36 +1,84 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { FiArrowRight, FiCheck } from "react-icons/fi";
+import { AnimatePresence, motion } from "motion/react";
+import {
+  PiArrowLeftBold,
+  PiArrowsLeftRightBold,
+  PiCheckCircleBold,
+  PiHandCoinsDuotone,
+  PiHourglassBold,
+  PiMagnifyingGlassBold,
+  PiXCircleBold,
+} from "react-icons/pi";
 import api from "../api";
 import { useAuth } from "../AuthContext";
 import useCurrencies from "../useCurrencies";
-import { formatAmount, timeAgo } from "../format";
+import { Avatar, CurrencySelect, DetailPanelSkeleton, EmptyState, FlagPair, Flash, Hero, ListCard, ListCardSkeleton, SectionTabs } from "../ui";
+import { formatAmount, memberFact, offerRate, timeAgo } from "../format";
+import { enter, panelSwap, popover, settle } from "../motion";
 
 const MAX_NOTE_LENGTH = 280;
+const SKELETON_DELAY_MS = 200;
+const POSTED_NOTICE_MS = 6000;
 
-// "Request swap" on someone else's offer: opens an optional note, then sends the request
-function RequestSwap({ offerId, requested, onRequested }) {
-  const [composing, setComposing] = useState(false);
+// Once you've asked for an offer, the server won't let you ask again. Each status gets its own
+// wording and icon, read as a status line rather than a button, so a finished request never looks
+// like it could be pressed.
+const OUTGOING_STATUS = {
+  pending: { Icon: PiHourglassBold, tone: "pending", text: (name) => `Waiting for ${name} to reply` },
+  accepted: { Icon: PiCheckCircleBold, tone: "ok", text: (name) => `${name} accepted, see their email in Requests` },
+  declined: { Icon: PiXCircleBold, tone: "quiet", text: (name) => `${name} declined` },
+  cancelled: { Icon: PiXCircleBold, tone: "quiet", text: () => "You cancelled this request" },
+};
+
+// What the viewer gives and gets for an offer, from their own side of the table
+function legsFor(offer, isMine) {
+  if (isMine) {
+    return {
+      primary: { amount: offer.giveAmount, currency: offer.giveCurrency, label: "You have" },
+      secondary: { amount: offer.wantAmount, currency: offer.wantCurrency, label: "You want" },
+    };
+  }
+  return {
+    primary: { amount: offer.giveAmount, currency: offer.giveCurrency, label: "You get" },
+    secondary: { amount: offer.wantAmount, currency: offer.wantCurrency, label: "You give" },
+  };
+}
+
+function cardTitle(offer, isMine) {
+  const { primary, secondary } = legsFor(offer, isMine);
+  return `${formatAmount(primary.amount)} ${primary.currency} → ${formatAmount(secondary.amount)} ${secondary.currency}`;
+}
+
+function detailSentence(offer, isMine) {
+  const { primary, secondary } = legsFor(offer, isMine);
+  return isMine
+    ? `You have ${formatAmount(primary.amount)} ${primary.currency}, want ${formatAmount(secondary.amount)} ${secondary.currency}`
+    : `You get ${formatAmount(primary.amount)} ${primary.currency} for ${formatAmount(secondary.amount)} ${secondary.currency}`;
+}
+
+// The inline note composer, inside the detail panel. Closes on Escape or a click outside, and hands
+// focus back to the Request swap button when it closes.
+function Composer({ offerId, onClose, onRequested }) {
   const [note, setNote] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
+  const formRef = useRef(null);
+  const triggerId = `request-${offerId}`;
 
-  if (requested) {
-    return (
-      <div className="mt-auto d-flex align-items-center gap-2 small">
-        <span className="text-success fw-bold"><FiCheck /> Requested</span>
-        <Link to="/requests" state={{ tab: "outgoing" }}>View</Link>
-      </div>
-    );
-  }
+  const close = (returnFocus = true) => {
+    onClose();
+    if (returnFocus) document.getElementById(triggerId)?.focus();
+  };
 
-  if (!composing) {
-    return (
-      <button className="btn btn-primary btn-sm mt-auto align-self-start" onClick={() => setComposing(true)}>
-        Request swap
-      </button>
-    );
-  }
+  useEffect(() => {
+    const onPointerDown = (e) => {
+      if (formRef.current?.contains(e.target) || document.getElementById(triggerId)?.contains(e.target)) return;
+      onClose();
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [onClose, triggerId]);
 
   const send = async (e) => {
     e.preventDefault();
@@ -38,7 +86,8 @@ function RequestSwap({ offerId, requested, onRequested }) {
     setError("");
     try {
       await api.post("/requests", { offerId, message: note });
-      onRequested();
+      window.dispatchEvent(new Event("swap:requests-changed"));
+      onRequested(offerId);
     } catch (err) {
       setError(err.response?.data?.message || "Couldn't send the request. Try again.");
       setSending(false);
@@ -46,31 +95,37 @@ function RequestSwap({ offerId, requested, onRequested }) {
   };
 
   return (
-    <form className="mt-auto" onSubmit={send}>
-      <label htmlFor={`note-${offerId}`} className="form-label small fw-bold mb-1">Note (optional)</label>
+    <motion.form
+      ref={formRef}
+      id={`composer-${offerId}`}
+      className="composer"
+      onSubmit={send}
+      onKeyDown={(e) => e.key === "Escape" && close()}
+      {...popover}
+    >
+      <label htmlFor={`note-${offerId}`} className="label">Add a note (optional)</label>
       <textarea
         id={`note-${offerId}`}
-        className="form-control form-control-sm mb-1"
-        rows={2}
+        className="textarea"
+        rows={3}
         maxLength={MAX_NOTE_LENGTH}
         placeholder="Where and when could you meet?"
         value={note}
         onChange={(e) => setNote(e.target.value)}
         autoFocus
+        style={{ marginTop: 8 }}
       />
-      <div className="d-flex justify-content-between align-items-center mb-2">
-        <span className="small text-danger">{error}</span>
-        <span className="small text-muted">{note.length}/{MAX_NOTE_LENGTH}</span>
+      <div className="composer-foot">
+        <span className="field-error" role="alert">{error}</span>
+        <span>{note.length}/{MAX_NOTE_LENGTH}</span>
       </div>
-      <div className="d-flex gap-2">
+      <div className="composer-actions">
+        <button type="button" className="btn btn-quiet btn-sm" onClick={() => close()}>Cancel</button>
         <button type="submit" className="btn btn-primary btn-sm" disabled={sending}>
           {sending ? "Sending…" : "Send request"}
         </button>
-        <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => setComposing(false)}>
-          Cancel
-        </button>
       </div>
-    </form>
+    </motion.form>
   );
 }
 
@@ -79,128 +134,366 @@ function BrowsePage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { currencies } = useCurrencies();
-  const [give, setGive] = useState("");
-  const [want, setWant] = useState("");
+
+  const [tab, setTab] = useState("market");
+  const [have, setHave] = useState("");
+  const [need, setNeed] = useState("");
+  const [flips, setFlips] = useState(0);
+  const [search, setSearch] = useState("");
   const [offers, setOffers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loaded, setLoaded] = useState(false);
+  const [slow, setSlow] = useState(false);
   const [error, setError] = useState("");
+  const [selectedId, setSelectedId] = useState(null);
+  const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
+  // Offer id -> { status, name }: the real outcome of a request you sent
+  const [requestedStatus, setRequestedStatus] = useState(() => ({}));
+  const [askedCounts, setAskedCounts] = useState({});
+  const [composingId, setComposingId] = useState(null);
   const [confirmingId, setConfirmingId] = useState(null);
-  const [requestedOfferIds, setRequestedOfferIds] = useState(() => new Set());
-  // Set when arriving from "Post offer", so the new card can be highlighted once
-  const [postedOfferId] = useState(location.state?.postedOfferId);
+  const showSkeleton = !loaded && slow;
 
-  // Drop the router state so a refresh doesn't highlight the offer again
+  // Set when arriving from "Post offer": the new offer is selected and a notice says it's live
+  const [postedOfferId] = useState(location.state?.postedOfferId);
+  const [postedNotice, setPostedNotice] = useState(Boolean(postedOfferId));
+
   useEffect(() => {
     if (location.state?.postedOfferId) navigate(location.pathname, { replace: true, state: null });
   }, [location, navigate]);
 
-  // Offers you already asked for show "Requested" instead of the button
+  useEffect(() => {
+    if (!postedNotice) return;
+    const timer = setTimeout(() => setPostedNotice(false), POSTED_NOTICE_MS);
+    return () => clearTimeout(timer);
+  }, [postedNotice]);
+
   useEffect(() => {
     api.get("/requests/outgoing")
-      .then((res) => setRequestedOfferIds(new Set(res.data.requests.map((r) => r.offer?._id).filter(Boolean))))
-      .catch(() => {}); // not critical: the server still rejects a duplicate request with a clear message
+      .then((res) => {
+        const byOffer = {};
+        for (const r of res.data.requests) {
+          if (r.offer?._id) byOffer[r.offer._id] = { status: r.status, name: r.counterpart.name };
+        }
+        setRequestedStatus(byOffer);
+      })
+      .catch(() => {});
+    api.get("/requests/incoming")
+      .then((res) => {
+        const counts = {};
+        for (const r of res.data.requests) {
+          if (r.offer && (r.status === "pending" || r.status === "accepted")) counts[r.offer._id] = (counts[r.offer._id] || 0) + 1;
+        }
+        setAskedCounts(counts);
+      })
+      .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!loading) return;
+    const timer = setTimeout(() => setSlow(true), SKELETON_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [loading]);
 
   useEffect(() => {
     let active = true;
     setLoading(true);
     setError("");
-    api.get("/offer", { params: { give: give || undefined, want: want || undefined } })
+    api.get("/offer", { params: { give: need || undefined, want: have || undefined } })
       .then((res) => active && setOffers(res.data.offers))
       .catch((err) => active && setError(err.response?.data?.message || "Couldn't load offers. Try again."))
-      .finally(() => active && setLoading(false));
-    // Ignore a slow response for filters the user has already changed
+      .finally(() => {
+        if (!active) return;
+        setLoading(false);
+        setLoaded(true);
+        setSlow(false);
+      });
     return () => { active = false; };
-  }, [give, want]);
+  }, [have, need]);
 
-  const deleteOffer = async (id) => {
+  const list = useMemo(() => {
+    let base = tab === "mine" ? offers.filter((o) => o.owner === user._id) : offers;
+    const q = search.trim().toLowerCase();
+    if (q) {
+      base = base.filter((o) =>
+        o.ownerName?.toLowerCase().includes(q) || o.giveCurrency?.toLowerCase().includes(q) || o.wantCurrency?.toLowerCase().includes(q)
+      );
+    }
+    return base;
+  }, [offers, tab, search, user._id]);
+
+  // Keep the selection valid as the list changes; default to the just-posted offer, or the first row
+  useEffect(() => {
+    if (list.length === 0) {
+      setSelectedId(null);
+      return;
+    }
+    setSelectedId((current) => {
+      if (current && list.some((o) => o._id === current)) return current;
+      if (postedOfferId && list.some((o) => o._id === postedOfferId)) return postedOfferId;
+      return list[0]._id;
+    });
+  }, [list, postedOfferId]);
+
+  const selected = list.find((o) => o._id === selectedId) || null;
+
+  const flipPair = () => {
+    setHave(need);
+    setNeed(have);
+    setFlips((n) => n + 1);
+  };
+
+  const remove = async (id) => {
+    setConfirmingId(null);
     try {
       await api.delete(`/offer/${id}`);
       setOffers((current) => current.filter((o) => o._id !== id));
     } catch (err) {
-      setError(err.response?.data?.message || "Couldn't delete the offer.");
-    } finally {
-      setConfirmingId(null);
+      setError(err.response?.data?.message || "Couldn't remove the offer.");
     }
   };
 
-  const filterSelect = (label, value, onChange) => (
-    <select className="form-select" aria-label={label} value={value} onChange={(e) => onChange(e.target.value)}>
-      <option value="">{label}: any</option>
-      {currencies.map((c) => <option key={c.code} value={c.code}>{label}: {c.code}</option>)}
-    </select>
-  );
+  const markRequested = (id, name) => {
+    setRequestedStatus((current) => ({ ...current, [id]: { status: "pending", name } }));
+    setComposingId(null);
+  };
+
+  const closeComposer = useCallback(() => setComposingId(null), []);
+
+  const openDetail = (id) => {
+    setSelectedId(id);
+    setMobileDetailOpen(true);
+  };
+
+  const filtered = Boolean(have || need);
+  const currencyOptions = currencies.map((c) => <option key={c.code} value={c.code}>{c.code} · {c.name}</option>);
+  const myOfferCount = offers.filter((o) => o.owner === user._id).length;
+
+  const metaFor = (offer, isMine) => {
+    const rate = offerRate(offer);
+    const asked = askedCounts[offer._id] || 0;
+    let tag = null;
+    if (isMine) {
+      if (asked > 0) tag = <span className="tag tag-pink">{asked === 1 ? "1 request" : `${asked} requests`}</span>;
+      else if (tab === "market") tag = <span className="tag">Yours</span>;
+    } else if (requestedStatus[offer._id]) {
+      tag = <span className={`tag status-${requestedStatus[offer._id].status}`}>{requestedStatus[offer._id].status}</span>;
+    }
+    return (
+      <>
+        {rate && <span>{rate}</span>}
+        {tag}
+        {offer.createdAt && <span>{timeAgo(offer.createdAt)}</span>}
+      </>
+    );
+  };
+
+  const detailContent = () => {
+    if (!selected) return null;
+    const isMine = selected.owner === user._id;
+    const { primary, secondary } = legsFor(selected, isMine);
+    const rate = offerRate(selected);
+    const fact = !isMine && memberFact(selected.ownerProfile);
+    const composing = composingId === selected._id;
+    const confirming = confirmingId === selected._id;
+    const requested = !isMine && requestedStatus[selected._id];
+
+    return (
+      <motion.div key={selected._id} {...panelSwap} className="panel detail-panel">
+        <button type="button" className="detail-back" onClick={() => setMobileDetailOpen(false)}>
+          <PiArrowLeftBold aria-hidden="true" /> Back to list
+        </button>
+
+        <div className="detail-head">
+          <FlagPair give={primary.currency} want={secondary.currency} size={56} />
+          <div>
+            <h2 className="detail-title">{detailSentence(selected, isMine)}</h2>
+            <p className="detail-sub">
+              <Avatar name={selected.ownerName} size={20} />
+              {isMine ? "Your offer" : selected.ownerName}
+            </p>
+            {fact && <p className="detail-meta">{fact}</p>}
+          </div>
+        </div>
+
+        {isMine ? (
+          confirming ? (
+            <div className="detail-status-line">
+              Remove this offer?
+              <button type="button" className="btn btn-quiet btn-sm" onClick={() => setConfirmingId(null)}>Keep</button>
+              <button type="button" className="btn btn-danger btn-sm" onClick={() => remove(selected._id)}>Remove</button>
+            </div>
+          ) : (
+            <div className="detail-actions">
+              <Link className="btn btn-secondary" to="/requests">View requests</Link>
+              <button type="button" className="btn btn-quiet" onClick={() => setConfirmingId(selected._id)}>Remove</button>
+            </div>
+          )
+        ) : requested ? (
+          (() => {
+            const { Icon, tone, text } = OUTGOING_STATUS[requested.status];
+            return (
+              <p className={`detail-status-line tone-${tone}`} role="status">
+                <Icon aria-hidden="true" /> {text(requested.name)}
+                <Link
+                  className="detail-status-view"
+                  to="/requests"
+                  state={{ tab: "outgoing" }}
+                  aria-label="View this request in Requests"
+                >
+                  View
+                </Link>
+              </p>
+            );
+          })()
+        ) : (
+          <>
+            <div className="detail-actions">
+              <button
+                type="button"
+                id={`request-${selected._id}`}
+                className="btn btn-primary"
+                aria-expanded={composing}
+                aria-controls={`composer-${selected._id}`}
+                onClick={() => setComposingId(composing ? null : selected._id)}
+              >
+                Request swap
+              </button>
+            </div>
+            <AnimatePresence>
+              {composing && (
+                <Composer
+                  key="composer"
+                  offerId={selected._id}
+                  onClose={closeComposer}
+                  onRequested={(id) => markRequested(id, selected.ownerName)}
+                />
+              )}
+            </AnimatePresence>
+          </>
+        )}
+
+        <div className="detail-divider" />
+        <p className="eyebrow">About this swap</p>
+        <div className="detail-body" style={{ marginTop: 16 }}>
+          <dl>
+            <dt>{primary.label}</dt>
+            <dd>{formatAmount(primary.amount)} {primary.currency}</dd>
+            <dt>{secondary.label}</dt>
+            <dd>{formatAmount(secondary.amount)} {secondary.currency}</dd>
+            <dt>{isMine ? "Your rate" : "Their rate"}</dt>
+            <dd>{rate || "—"}</dd>
+            <dt>Posted</dt>
+            <dd>{selected.createdAt ? timeAgo(selected.createdAt) : "—"}</dd>
+          </dl>
+        </div>
+      </motion.div>
+    );
+  };
 
   return (
-    <div className="container py-4" style={{ maxWidth: "960px" }}>
-      <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-4">
-        <div>
-          <h2 className="mb-1">Open offers</h2>
-          <p className="text-muted mb-0">Cash other people want to swap.</p>
+    <>
+      <SectionTabs
+        id="offers-tabs"
+        label="Offers"
+        value={tab}
+        onChange={setTab}
+        tabs={[
+          { key: "market", label: "Market" },
+          { key: "mine", label: "Your offers", count: myOfferCount },
+        ]}
+      />
+
+      <Hero
+        headline="Swap the cash you have left over."
+        sub="Cash other people want to swap. Find an offer that fits and send a request; emails stay private until they accept."
+        meta={loaded && <><strong>{list.length}</strong> {list.length === 1 ? "offer" : "offers"}</>}
+      />
+
+      <div className="filters">
+        <div className="field-icon filters-search">
+          <PiMagnifyingGlassBold aria-hidden="true" />
+          <input
+            type="search"
+            className="input"
+            placeholder="Search by name or currency"
+            aria-label="Search offers by poster name or currency"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
-        <div className="d-flex gap-2">
-          {filterSelect("Gives", give, setGive)}
-          {filterSelect("Wants", want, setWant)}
+        <div className="pair-picker" role="group" aria-label="Filter offers by currency">
+          <div className="pair-field">
+            <CurrencySelect id="filter-have" aria-label="You have" value={have} onChange={(e) => setHave(e.target.value)}>
+              <option value="">Any</option>
+              {currencyOptions}
+            </CurrencySelect>
+          </div>
+          <button type="button" className="pair-flip" onClick={flipPair} disabled={!filtered} aria-label="Swap the two currencies">
+            <motion.span className="pair-flip-icon" animate={{ rotate: flips * 180 }} transition={settle}>
+              <PiArrowsLeftRightBold aria-hidden="true" />
+            </motion.span>
+          </button>
+          <div className="pair-field">
+            <CurrencySelect id="filter-need" aria-label="You need" value={need} onChange={(e) => setNeed(e.target.value)}>
+              <option value="">Any</option>
+              {currencyOptions}
+            </CurrencySelect>
+          </div>
         </div>
       </div>
 
-      {postedOfferId && <div className="alert alert-success">Your offer is live.</div>}
-      {error && <div className="alert alert-danger">{error}</div>}
+      <Flash tone="ok" message={postedNotice && "Your offer is live. Requests for it show up under Requests."} />
+      <Flash tone="error" message={error} />
 
-      {loading ? (
-        <p className="text-muted">Loading offers…</p>
-      ) : offers.length === 0 ? (
-        <div className="text-center text-muted border rounded-3 py-5">
-          <p className="mb-2">{give || want ? "No open offers match these currencies." : "No open offers yet."}</p>
-          <Link to="/offer" className="btn btn-primary btn-sm">Post an offer</Link>
-        </div>
+      {loaded && !loading && list.length === 0 ? (
+        <EmptyState
+          key={filtered || search ? "filtered" : "none"}
+          icon={filtered || search ? PiMagnifyingGlassBold : PiHandCoinsDuotone}
+          eyebrow="For you"
+          title={filtered || search ? "No offers match" : "No open offers yet"}
+          action={<Link to="/offer" className="btn btn-primary">Post an offer</Link>}
+          {...enter()}
+        >
+          {filtered || search
+            ? "Try another currency or search term, or post an offer so the next person looking finds you."
+            : "Post the cash you have and what you want for it. People who need it will find it here."}
+        </EmptyState>
       ) : (
-        <div className="row g-3">
-          {offers.map((offer) => {
-            const isMine = offer.owner === user._id;
-            return (
-              <div className="col-md-6 col-lg-4" key={offer._id}>
-                <div className={`card h-100 shadow-sm ${offer._id === postedOfferId ? "border-success" : ""}`}>
-                  <div className="card-body d-flex flex-column">
-                    <div className="small text-muted mb-1">Gives</div>
-                    <div className="d-flex align-items-center gap-2 fs-4 fw-bold mb-3">
-                      <span>{formatAmount(offer.amount)} {offer.giveCurrency}</span>
-                      <FiArrowRight className="text-muted" aria-label="for" />
-                      <span className="text-primary">{offer.wantCurrency}</span>
-                    </div>
-                    <div className="small text-muted mb-3">
-                      {isMine ? <span className="badge text-bg-light border me-1">Your offer</span> : offer.ownerName}
-                      {" · "}{timeAgo(offer.createdAt)}
-                    </div>
+        <div className={`master-detail ${mobileDetailOpen ? "is-showing-detail" : ""}`} aria-busy={loading}>
+          <div className="list-col">
+            <AnimatePresence mode="popLayout">
+              {showSkeleton && Array.from({ length: 5 }, (_, i) => (
+                <ListCardSkeleton key={`skeleton-${i}`} {...enter(i)} exit={{ opacity: 0, transition: { duration: 0.1 } }} />
+              ))}
+              {loaded && list.map((offer, i) => {
+                const isMine = offer.owner === user._id;
+                return (
+                  <ListCard
+                    key={offer._id}
+                    layout="position"
+                    transition={settle}
+                    {...enter(i)}
+                    tile={<FlagPair give={legsFor(offer, isMine).primary.currency} want={legsFor(offer, isMine).secondary.currency} />}
+                    title={cardTitle(offer, isMine)}
+                    sub={isMine ? "Your offer" : offer.ownerName}
+                    meta={metaFor(offer, isMine)}
+                    selected={offer._id === selectedId}
+                    onClick={() => openDetail(offer._id)}
+                  />
+                );
+              })}
+            </AnimatePresence>
+          </div>
 
-                    {!isMine && (
-                      <RequestSwap
-                        offerId={offer._id}
-                        requested={requestedOfferIds.has(offer._id)}
-                        onRequested={() => setRequestedOfferIds((ids) => new Set(ids).add(offer._id))}
-                      />
-                    )}
-
-                    {isMine && (
-                      <div className="mt-auto d-flex gap-2">
-                        {confirmingId === offer._id ? (
-                          <>
-                            <button className="btn btn-danger btn-sm" onClick={() => deleteOffer(offer._id)}>Delete offer</button>
-                            <button className="btn btn-outline-secondary btn-sm" onClick={() => setConfirmingId(null)}>Keep</button>
-                          </>
-                        ) : (
-                          <button className="btn btn-outline-danger btn-sm" onClick={() => setConfirmingId(offer._id)}>Delete</button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          <div className="detail-col">
+            <AnimatePresence mode="wait" initial={false}>
+              {loaded ? detailContent() : <DetailPanelSkeleton key="skeleton" />}
+            </AnimatePresence>
+          </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 

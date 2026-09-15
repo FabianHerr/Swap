@@ -1,15 +1,18 @@
 import { Link, Navigate } from 'react-router-dom';
-import React from 'react';
+import { useState } from 'react';
+import { PiWarningCircleBold } from "react-icons/pi";
 import { useAuth } from './AuthContext';
+import { AuthIntro } from './ui';
+import logo from './assets/logo.svg';
 
 const Signup = () => {
   const { user, register } = useAuth();
-  const [name, setName] = React.useState('');
-  const [email, setEmail] = React.useState('');
-  const [password, setPassword] = React.useState('');
-  const [confirmPassword, setConfirmPassword] = React.useState('');
-  const [error, setError] = React.useState('');
-  const [submitting, setSubmitting] = React.useState(false);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   // Registering logs you in, so this also handles "just signed up"
   if (user) return <Navigate to="/" replace />;
@@ -21,7 +24,7 @@ const Signup = () => {
       return;
     }
     if (password !== confirmPassword) {
-      setError("Passwords do not match");
+      setError("Passwords don't match");
       return;
     }
     setError('');
@@ -29,84 +32,88 @@ const Signup = () => {
     try {
       await register(name, email, password);
     } catch (err) {
-      setError(err.response?.data?.message || "Registration failed"); // show in UI
-    } finally {
+      setError(err.response?.data?.message || "Couldn't create the account. Try again.");
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="d-flex justify-content-center align-items-center bg-light" style={{ minHeight: 'calc(100vh - 64px)' }}>
-      <div className="card shadow-sm" style={{ width: '400px' }}>
-        <div className="card-body">
-          <h2 className="card-title text-center mb-4">Sign Up</h2>
+    <div className="auth">
+      <div className="auth-panel">
+        <AuthIntro logo={logo} />
+      </div>
+      <div className="auth-form-side">
+        <section className="panel auth-card" aria-labelledby="signup-title">
+          <h1 className="auth-title" id="signup-title">Create an account</h1>
+          <p className="auth-sub">Your name shows on your offers. Your email stays private until you accept a swap.</p>
           <form onSubmit={handleSubmit}>
-            <div className="mb-3">
-              <label htmlFor="name" className="form-label fw-bold">Name</label>
+            <div className="field">
+              <label htmlFor="name" className="label">Name</label>
               <input
                 type="text"
-                className="form-control"
+                className="input"
                 id="name"
                 name="name"
-                autoComplete="name"
-                placeholder="Enter your name"
+                autoComplete="given-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
               />
             </div>
-            <div className="mb-3">
-              <label htmlFor="email" className="form-label fw-bold">Email</label>
+            <div className="field">
+              <label htmlFor="email" className="label">Email</label>
               <input
                 type="email"
-                className="form-control"
+                className="input"
                 id="email"
                 name="email"
                 autoComplete="email"
-                placeholder="Enter your email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
               />
             </div>
-            <div className="mb-3">
-              <label htmlFor="password" className="form-label fw-bold">Password</label>
+            <div className="field">
+              <label htmlFor="password" className="label">Password</label>
               <input
                 type="password"
-                className="form-control"
+                className="input"
                 id="password"
                 name="password"
                 autoComplete="new-password"
-                placeholder="At least 8 characters"
+                aria-describedby="password-hint"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
+              <span className="hint" id="password-hint">At least 8 characters</span>
             </div>
-            <div className="mb-3">
-              <label htmlFor="confirmPassword" className="form-label fw-bold">Confirm Password</label>
+            <div className="field">
+              <label htmlFor="confirmPassword" className="label">Confirm password</label>
               <input
                 type="password"
-                className="form-control"
+                className="input"
                 id="confirmPassword"
                 name="confirmPassword"
                 autoComplete="new-password"
-                placeholder="Confirm your password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
               />
             </div>
-            {error && <div className="text-danger mb-3">{error}</div>}
-            <button type="submit" className="btn btn-primary w-100 mb-3" disabled={submitting}>
-              {submitting ? 'Creating account…' : 'Sign Up'}
+            {error && (
+              <p className="field-error" role="alert">
+                <PiWarningCircleBold aria-hidden="true" /> {error}
+              </p>
+            )}
+            <button type="submit" className="btn btn-primary btn-lg btn-block" disabled={submitting}>
+              {submitting ? 'Creating account…' : 'Create account'}
             </button>
           </form>
-          <div className="text-center">
-            <p className="mb-0">Already have an account?</p>
-            <Link to='/login' className="btn btn-link">Login</Link>
-          </div>
-        </div>
+          <p className="auth-switch">
+            Already on Swap? <Link to='/login'>Log in</Link>
+          </p>
+        </section>
       </div>
     </div>
   );

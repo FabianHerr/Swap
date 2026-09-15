@@ -13,3 +13,9 @@ Short notes on things that broke while finishing Swap: symptom → what I checke
 - **Checked:** Is it my network? `dig A google.com` and `dig SRV _imaps._tcp.gmail.com` both resolve, so DNS and SRV lookups work. `dig SRV` for the cluster → `NXDOMAIN`, answered by mongodb.net's own nameserver.
 - **Cause:** The Atlas cluster no longer exists (the project sat idle since January), so the connection string in `.env` points at nothing.
 - **Fix:** New free Atlas cluster + new `MONGO_URI`. Also noted: the server keeps listening even when the DB is down, so requests just hang. That's the reason for a `/health` endpoint that reports DB state.
+
+## 2026-09-14: A normal Colombian peso offer was rejected as "too much"
+- **Symptom:** After adding a "want" amount to offers, posting "Have 400 CAD, want 1,150,000 COP" failed with `Amount can't be more than 1,000,000`.
+- **Checked:** The request was valid, and 400 CAD really is about 1.15M COP. The limit is one number in `validateOffer.js`, applied to every currency.
+- **Cause:** I picked the 1,000,000 cap thinking in dollars. For low-value currencies (COP, CLP, XOF, JPY), ordinary cash amounts run into the millions. It went unnoticed while offers stored only one amount, because nobody typed a COP amount.
+- **Fix:** Raised the cap to 100,000,000, which still stops junk like `9999999999`. Lesson: a limit that doesn't know the unit isn't a business rule, it's a guess. Test with the currencies your users actually carry.

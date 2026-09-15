@@ -28,8 +28,9 @@ function toViewerRequest(request, viewerId) {
     // null when the offer was deleted after the request was made
     offer: offer && {
       _id: offer._id,
-      amount: offer.amount,
+      giveAmount: offer.giveAmount,
       giveCurrency: offer.giveCurrency,
+      wantAmount: offer.wantAmount,
       wantCurrency: offer.wantCurrency,
       status: offer.status,
     },
@@ -42,7 +43,7 @@ function toViewerRequest(request, viewerId) {
 }
 
 const populateRequest = (query) => query
-  .populate("offer", "amount giveCurrency wantCurrency status")
+  .populate("offer", "giveAmount giveCurrency wantAmount wantCurrency status")
   .populate("requester", "name email")
   .populate("owner", "name email");
 

@@ -4,9 +4,11 @@ const OfferSchema = new mongoose.Schema({
     owner: { type: mongoose.Schema.Types.ObjectId, ref: "Users", required: true },
     // Copied from the token at creation so Browse can show a name without a lookup per offer
     ownerName: { type: String, required: true, trim: true },
-    // The owner gives `amount` of giveCurrency and wants wantCurrency in return
-    amount: { type: Number, required: true, min: 0 },
+    // The owner gives giveAmount of giveCurrency and wants wantAmount of wantCurrency in return.
+    // Both amounts are the owner's own terms; Swap never looks up an exchange rate.
+    giveAmount: { type: Number, required: true, min: 0 },
     giveCurrency: { type: String, required: true, uppercase: true, trim: true },
+    wantAmount: { type: Number, required: true, min: 0 },
     wantCurrency: { type: String, required: true, uppercase: true, trim: true },
     status: { type: String, enum: ["open", "matched"], default: "open" },
     // How the offer was entered: typed in the form, or filled by the parser (rules or LLM)

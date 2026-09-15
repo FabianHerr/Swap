@@ -1,102 +1,143 @@
+import { useEffect, useState } from "react";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { motion } from "motion/react";
+import { PiListBold, PiPlusCircle, PiSignOut, PiSquaresFour, PiTray, PiX } from "react-icons/pi";
 import logo from "./assets/logo.svg";
-import { useState } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
-import { FiSearch, FiPlusCircle, FiInbox, FiLogOut } from "react-icons/fi";
-import { FaSearch, FaPlusCircle, FaInbox } from "react-icons/fa";
+import api from "./api";
 import { useAuth } from "./AuthContext";
+import { Avatar, Count } from "./ui";
+import { settle } from "./motion";
+
+const POLL_MS = 15000;
 
 const links = [
-  { to: "/offers", label: "Browse offers", iconEmpty: FiSearch, iconFilled: FaSearch },
-  { to: "/offer", label: "Create offer", iconEmpty: FiPlusCircle, iconFilled: FaPlusCircle },
-  { to: "/requests", label: "Swap requests", iconEmpty: FiInbox, iconFilled: FaInbox },
+  { to: "/offers", label: "Offers", Icon: PiSquaresFour },
+  { to: "/offer", label: "Post offer", Icon: PiPlusCircle },
+  { to: "/requests", label: "Requests", Icon: PiTray, showsPending: true },
 ];
+
+// Pending requests on your offers, kept fresh so a new request shows up without a reload
+function usePendingCount(user) {
+  const location = useLocation();
+  const [pending, setPending] = useState(0);
+
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    const refresh = () => {
+      if (document.hidden) return;
+      api.get("/requests/incoming")
+        .then((res) => active && setPending(res.data.requests.filter((r) => r.status === "pending").length))
+        .catch(() => {});
+    };
+    refresh();
+    const timer = setInterval(refresh, POLL_MS);
+    window.addEventListener("swap:requests-changed", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      active = false;
+      clearInterval(timer);
+      window.removeEventListener("swap:requests-changed", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [user, location.pathname]);
+
+  return user ? pending : 0;
+}
 
 const TopMenu = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [hoveredButton, setHoveredButton] = useState(null);
+  const location = useLocation();
+  const pending = usePendingCount(user);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const buttonStyle = (id, isActive, padding) => ({
-    justifyContent: "center",
-    padding,
-    borderRadius: "12px",
-    background: hoveredButton === id ? "#a0d8ff" : "transparent",
-    color: isActive ? "#fc65b3" : "#fff",
-    fontWeight: 700,
-    transition: "all 0.3s ease",
-    border: "none",
-    cursor: "pointer",
-  });
+  // A navigation, or the escape key, always closes the mobile drawer
+  useEffect(() => setDrawerOpen(false), [location.pathname]);
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const onKey = (e) => e.key === "Escape" && setDrawerOpen(false);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [drawerOpen]);
+
+  // The drawer's open state lives on .app so the CSS can react to it at any width
+  useEffect(() => {
+    document.querySelector(".app")?.classList.toggle("drawer-open", drawerOpen);
+    return () => document.querySelector(".app")?.classList.remove("drawer-open");
+  }, [drawerOpen]);
 
   const handleLogout = () => {
     logout();
     navigate("/login");
   };
 
-  return (
-    <div
-      className="d-flex align-items-center shadow"
-      style={{
-        width: "100%",
-        height: "60px",
-        background: "linear-gradient(135deg, #4BAAFE 0%, #3da5fe 100%)",
-        padding: "10px 16px",
-        fontFamily: '"Rubik Bubbles", cursive',
-      }}
-    >
-      {/* Logo (far left) */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          height: "40px",
-          marginRight: "16px",
-        }}
-      >
-        <img src={logo} alt="Swap" style={{ height: "40px", width: "auto", display: "block" }} />
-      </div>
+  if (!user) {
+    return (
+      <aside className="sidebar">
+        <div className="sidebar-top">
+          <NavLink to="/login" className="sidebar-brand" aria-label="Swap home">
+            <img src={logo} alt="Swap" />
+          </NavLink>
+        </div>
+      </aside>
+    );
+  }
 
-      {/* Navigation only makes sense once logged in */}
-      {user && (
-        <>
-          {/* Middle buttons */}
-          <nav className="d-flex flex-grow-1 justify-content-center">
+  return (
+    <>
+      <aside className="sidebar">
+        <div className="sidebar-top">
+          <NavLink to="/offers" className="sidebar-brand" aria-label="Swap home">
+            <img src={logo} alt="Swap" />
+          </NavLink>
+          <button
+            type="button"
+            className="sidebar-menu-btn"
+            aria-label={drawerOpen ? "Close menu" : "Open menu"}
+            aria-expanded={drawerOpen}
+            onClick={() => setDrawerOpen((v) => !v)}
+          >
+            {drawerOpen ? <PiX aria-hidden="true" /> : <PiListBold aria-hidden="true" />}
+          </button>
+        </div>
+
+        <div className="sidebar-drawer">
+          <nav className="sidebar-nav" aria-label="Main">
             {links.map((link) => (
-              <NavLink
-                key={link.to}
-                to={link.to}
-                end
-                title={link.label}
-                aria-label={link.label}
-                className={({ isActive }) => `btn d-flex align-items-center mx-2 ${isActive ? "shadow" : ""}`}
-                style={({ isActive }) => buttonStyle(link.to, isActive, "11px 48px")}
-                onMouseEnter={() => setHoveredButton(link.to)}
-                onMouseLeave={() => setHoveredButton(null)}
-              >
-                {({ isActive }) => {
-                  const Icon = isActive ? link.iconFilled : link.iconEmpty;
-                  return <Icon size={28} />;
-                }}
+              <NavLink key={link.to} to={link.to} end className="sidebar-item">
+                {({ isActive }) => (
+                  <>
+                    {isActive && <motion.span layoutId="sidebar-fill" className="sidebar-item-fill" transition={settle} />}
+                    <link.Icon aria-hidden="true" />
+                    <span>{link.label}</span>
+                    {link.showsPending && <Count value={pending} label={`${pending} pending`} />}
+                  </>
+                )}
               </NavLink>
             ))}
           </nav>
 
-          {/* Logout (far right) */}
-          <button
-            className="btn d-flex align-items-center gap-2"
-            style={buttonStyle("logout", false, "14px 20px")}
-            title={`Log out ${user.name}`}
-            aria-label="Log out"
-            onClick={handleLogout}
-            onMouseEnter={() => setHoveredButton("logout")}
-            onMouseLeave={() => setHoveredButton(null)}
-          >
-            <span className="small" style={{ fontFamily: "system-ui, sans-serif" }}>{user.name}</span>
-            <FiLogOut size={24} />
-          </button>
-        </>
-      )}
-    </div>
+          <div className="sidebar-bottom">
+            <div className="sidebar-user">
+              <Avatar name={user.name} size={28} />
+              <span className="sidebar-user-name">{user.name}</span>
+            </div>
+            <button className="sidebar-logout" onClick={handleLogout} aria-label={`Log out ${user.name}`}>
+              <PiSignOut aria-hidden="true" />
+              <span>Log out</span>
+            </button>
+          </div>
+        </div>
+      </aside>
+      <button
+        type="button"
+        className="sidebar-backdrop"
+        aria-hidden={!drawerOpen}
+        tabIndex={-1}
+        onClick={() => setDrawerOpen(false)}
+      />
+    </>
   );
 };
 
